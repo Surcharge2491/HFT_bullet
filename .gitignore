@@ -1,0 +1,15 @@
+/target
+.env
+.DS_Store
+
+# Your bot's private key. Never commit it.
+*.key
+
+# Terraform state and the deploy SSH key (infra/)
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
+infra/**/.ssh/
+
+# Market data from `fetch-binance` and `record` (big; keep out of git)
+/data/
