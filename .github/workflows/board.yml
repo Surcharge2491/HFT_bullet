@@ -28,7 +28,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
       OWNER: ${{ github.repository_owner }}
-      NUM: ${{ inputs.project_number || vars.PROJECT_NUMBER || '1' }}
+      NUM: ${{ inputs.project_number || vars.PROJECT_NUMBER || '3' }}
       REPOS: "HFT_bullet solana_kaggle cross-sectional-factor-research"
     steps:
       - run: |
