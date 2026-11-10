@@ -1,0 +1,9 @@
+== REAL 2026-11-09 ref=perp SOLUSDT spread=2bps fill-at-touch ==
+backtest 2026-11-09 02:08:59Z -> 2026-11-09 04:11:54Z (2.05 h, 72495 events)
+  pnl            $-0.3224 (after $0 fees)
+  max drawdown   $0.3226
+  fills          627 (bought 15.17, sold 15.18, $2665.85 traded)
+  position       end -0.01, max |0.09|
+  quoting        both sides 87.5% of the time, 1 orders rejected as crossing
+  markout        +1s -1.26 bps, +10s -1.19 bps (mean per fill; negative = adverse selection)
+  final status   quoting

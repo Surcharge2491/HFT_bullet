@@ -1,0 +1,9 @@
+== PROXY PROXY 2026-11-09 window, tape=spot SOLUSDC, ref=perp SOLUSDT spread=1bps seed=1 ==
+backtest 2026-11-09 02:08:59Z -> 2026-11-09 04:11:53Z (2.05 h, 32696 events)
+  pnl            $-0.4474 (after $0 fees)
+  max drawdown   $0.4497
+  fills          816 (bought 19.69, sold 19.74, $3463.80 traded)
+  position       end -0.05, max |0.10|
+  quoting        both sides 72.8% of the time, 17 orders rejected as crossing
+  markout        +1s -1.26 bps, +10s -1.45 bps (mean per fill; negative = adverse selection)
+  final status   quoting
