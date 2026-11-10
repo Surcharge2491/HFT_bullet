@@ -410,6 +410,7 @@ async fn record_bullet(client: &Client, symbols: Vec<String>, rows: Rows) -> Res
             .iter()
             .map(|s| (s.clone(), BookKeeper::default()))
             .collect();
+        let mut seen: HashMap<String, SeenIds> = HashMap::new();
         let mut ping = tokio::time::interval(Duration::from_secs(1));
         loop {
             let event = tokio::select! {
@@ -452,6 +453,14 @@ async fn record_bullet(client: &Client, symbols: Vec<String>, rows: Rows) -> Res
                         None => None,
                     },
                     ServerMessage::AggTrade(t) if books.contains_key(&t.symbol) => {
+                        // Bullet's trade stream sends every trade twice (same id).
+                        if !seen
+                            .entry(t.symbol.clone())
+                            .or_default()
+                            .first_time(t.agg_trade_id)
+                        {
+                            continue;
+                        }
                         match (Decimal::from_str(&t.price), Decimal::from_str(&t.quantity)) {
                             (Ok(price), Ok(qty)) => Some(Row {
                                 stream: Stream::BulletTrades,
@@ -485,6 +494,32 @@ async fn record_bullet(client: &Client, symbols: Vec<String>, rows: Rows) -> Res
     Ok(())
 }
 
+/// The most recent trade ids we've written, to drop repeats.
+#[derive(Default)]
+struct SeenIds {
+    ids: std::collections::HashSet<u64>,
+    order: std::collections::VecDeque<u64>,
+}
+
+impl SeenIds {
+    /// Remember this many: repeats arrive microseconds apart.
+    const KEEP: usize = 10_000;
+
+    /// True the first time we see `id`.
+    fn first_time(&mut self, id: u64) -> bool {
+        if !self.ids.insert(id) {
+            return false;
+        }
+        self.order.push_back(id);
+        if self.order.len() > Self::KEEP
+            && let Some(old) = self.order.pop_front()
+        {
+            self.ids.remove(&old);
+        }
+        true
+    }
+}
+
 /// One row per book update, even when the top didn't change: the backtest
 /// uses these to know the book is alive (the bot pulls quotes after
 /// `book_stale_secs` of silence).
@@ -509,6 +544,20 @@ fn top_of_book(symbol: &str, book: &crate::book::Book, recv_us: u64, exch_us: u6
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_trade_sent_twice_is_kept_once() {
+        let mut seen = SeenIds::default();
+        assert!(seen.first_time(7));
+        assert!(!seen.first_time(7), "Bullet's repeat of the same trade");
+        assert!(seen.first_time(8));
+        // Only recent ids are kept, so memory stays bounded.
+        for id in 100..100 + SeenIds::KEEP as u64 {
+            seen.first_time(id);
+        }
+        assert!(seen.order.len() <= SeenIds::KEEP);
+        assert!(seen.first_time(7), "long forgotten");
+    }
 
     #[test]
     fn file_names_sort_in_time_order() {
