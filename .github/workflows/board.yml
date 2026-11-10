@@ -1,0 +1,67 @@
+# Keeps the Kanban board in step with the cards: adds every open issue that
+# has a "stage: ..." label (in all three repos) to the project, and puts it in
+# the Status column named after that stage (docs/pipeline.md).
+#
+# Needs a repo secret PROJECT_TOKEN: a classic personal access token with the
+# `project` and `repo` scopes (GitHub's built-in token can't reach user projects).
+name: Board
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_number:
+        description: "Project number, from its URL: github.com/users/OWNER/projects/<number>"
+        required: false
+  issues:
+    types: [opened, reopened, labeled, unlabeled]
+  schedule:
+    - cron: "17 * * * *" # hourly, to pick up cards in the other repos
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+      NUM: ${{ inputs.project_number || vars.PROJECT_NUMBER || '1' }}
+      REPOS: "HFT_bullet solana_kaggle cross-sectional-factor-research"
+    steps:
+      - run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Add a PROJECT_TOKEN secret (classic PAT with project + repo scopes)"; exit 1
+          fi
+          proj=$(gh api graphql -F n="$NUM" -f login="$OWNER" -f query='
+            query($login: String!, $n: Int!) {
+              user(login: $login) { projectV2(number: $n) { id title
+                fields(first: 50) { nodes { ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }')
+          pid=$(jq -r '.data.user.projectV2.id' <<<"$proj")
+          if [ "$pid" = "null" ]; then echo "::error::No project #$NUM for $OWNER"; exit 1; fi
+          echo "Project: $(jq -r '.data.user.projectV2.title' <<<"$proj") (#$NUM)"
+          field=$(jq -r '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .id' <<<"$proj")
+          for repo in $REPOS; do
+            gh issue list --repo "$OWNER/$repo" --state open --limit 200 --json id,number,labels \
+              | jq -c '.[] | {id, number, stage: ([.labels[].name | select(startswith("stage: "))][0] // "")}' \
+              | while read -r issue; do
+                  stage=$(jq -r .stage <<<"$issue")
+                  [ -n "$stage" ] || continue
+                  number=$(jq -r .number <<<"$issue")
+                  item=$(gh api graphql -f p="$pid" -f c="$(jq -r .id <<<"$issue")" \
+                    --jq '.data.addProjectV2ItemById.item.id' -f query='
+                    mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: {projectId: $p, contentId: $c}) { item { id } } }')
+                  # "stage: 5 pilot live" -> column "Pilot live"
+                  column=$(sed -E 's/^stage: [0-9x]+ //' <<<"$stage")
+                  option=$(jq -r --arg c "$column" '.data.user.projectV2.fields.nodes[]
+                    | select(.name == "Status") | .options[]
+                    | select((.name | ascii_downcase) == ($c | ascii_downcase)) | .id' <<<"$proj")
+                  if [ -z "$option" ]; then
+                    echo "::warning::$repo#$number: added, but there's no Status column named '$column'"
+                    continue
+                  fi
+                  gh api graphql -f p="$pid" -f i="$item" -f f="$field" -f o="$option" -f query='
+                    mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) {
+                      updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: $f,
+                        value: {singleSelectOptionId: $o}}) { projectV2Item { id } } }' > /dev/null
+                  echo "$repo#$number -> $column"
+                done
+          done
