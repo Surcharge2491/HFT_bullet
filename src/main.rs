@@ -82,6 +82,8 @@ enum Command {
     Backtest(backtest::Args),
     /// Measure Bullet from recordings against a Binance tape (for --proxy backtests).
     Calibrate(calibrate::Args),
+    /// Compare recorded Bullet markets (spread, flow), and write per-market configs.
+    Screen(calibrate::ScreenArgs),
 }
 
 #[tokio::main]
@@ -118,6 +120,7 @@ async fn main() -> Result<()> {
         Command::Record(args) => record::run(&args).await,
         Command::Backtest(args) => backtest::run(&args),
         Command::Calibrate(args) => calibrate::run(&args),
+        Command::Screen(args) => calibrate::screen(&args),
     }
 }
 

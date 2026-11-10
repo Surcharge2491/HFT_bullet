@@ -82,8 +82,10 @@ pub async fn run(
             market.name(),
             dataset.local_name()
         ));
-        if target.exists() {
-            tracing::info!("{} already there, skipping", target.display());
+        // Saved gzipped (a month of a busy market is gigabytes as plain CSV).
+        let gz = PathBuf::from(format!("{}.gz", target.display()));
+        if target.exists() || gz.exists() {
+            tracing::info!("{} already there, skipping", gz.display());
             continue;
         }
         let name = dataset.remote_name();
@@ -98,7 +100,8 @@ pub async fn run(
         let bytes = response.error_for_status()?.bytes().await?;
         let rows = convert(dataset, &bytes, &tmp_path(&target))?;
         std::fs::rename(tmp_path(&target), &target)?;
-        tracing::info!("{}: {rows} rows", target.display());
+        crate::record::gzip(&target)?;
+        tracing::info!("{}: {rows} rows", gz.display());
     }
     Ok(())
 }

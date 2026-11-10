@@ -396,3 +396,317 @@ mod tests {
         assert_eq!(back.lag_ms, p.lag_ms);
     }
 }
+
+// ---------- screen ----------
+
+#[derive(clap::Args, Debug)]
+pub struct ScreenArgs {
+    /// Folder with one subfolder of recordings per market.
+    #[arg(long, default_value = "bullet-data")]
+    pub data: PathBuf,
+    /// Only use files from this UTC day (YYYY-MM-DD).
+    #[arg(long)]
+    pub day: Option<String>,
+    /// Write the table here too (Markdown).
+    #[arg(long)]
+    pub out: Option<PathBuf>,
+    /// Write a backtest config per market here, from `--template`, with
+    /// orders of about `--order-usd` (rounded up to the market's lot size).
+    #[arg(long)]
+    pub write_configs: Option<PathBuf>,
+    #[arg(long, default_value = "backtest.toml")]
+    pub template: PathBuf,
+    #[arg(long, default_value = "5")]
+    pub order_usd: Decimal,
+}
+
+/// One market's numbers, from Bullet recordings alone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MarketStats {
+    pub market: String,
+    pub hours: f64,
+    pub mid: Decimal,
+    pub tick: Decimal,
+    pub spread_bps_p50: f64,
+    pub tick_bps: f64,
+    pub top_usd_p50: f64,
+    pub book_updates_per_sec: f64,
+    pub trades_per_hour: f64,
+    pub usd_per_hour: f64,
+    pub buy_share: f64,
+}
+
+pub fn screen(args: &ScreenArgs) -> Result<()> {
+    let map = binance_map(&args.data.join("binance-map.toml"));
+    let mut rows = Vec::new();
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(&args.data)?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.is_dir())
+        .collect();
+    dirs.sort();
+    for dir in dirs {
+        let market = dir
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let files = |kind: &str| -> Vec<PathBuf> {
+            let prefix = format!(
+                "bullet-{market}-{kind}-{}",
+                args.day.as_deref().unwrap_or("")
+            );
+            std::fs::read_dir(&dir)
+                .map(|it| {
+                    it.filter_map(|e| e.ok().map(|e| e.path()))
+                        .filter(|p| {
+                            p.file_name()
+                                .is_some_and(|n| n.to_string_lossy().starts_with(&prefix))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let Ok(tick) = read_tick(&dir, &market) else {
+            continue;
+        };
+        let quotes: Vec<Quote> =
+            CsvReader::open(files("quotes"), Quote::parse).collect::<Result<_>>()?;
+        let trades: Vec<Trade> =
+            CsvReader::open(files("trades"), Trade::parse).collect::<Result<_>>()?;
+        if let Some(s) = market_stats(&market, tick, &quotes, &trades) {
+            rows.push(s);
+        }
+    }
+    rows.sort_by(|a, b| b.usd_per_hour.total_cmp(&a.usd_per_hour));
+
+    let mut table = String::from(
+        "| market | hours | price | spread bp (p50) | tick bp | top of book $ (p50) | book updates/s | trades/h | $ traded/h | buys | Binance |\n|---|---|---|---|---|---|---|---|---|---|---|\n",
+    );
+    for s in &rows {
+        table += &format!(
+            "| {} | {:.1} | {} | {:.2} | {:.2} | {:.0} | {:.1} | {:.0} | {:.0} | {:.0}% | {} |\n",
+            s.market,
+            s.hours,
+            s.mid.round_dp(4),
+            s.spread_bps_p50,
+            s.tick_bps,
+            s.top_usd_p50,
+            s.book_updates_per_sec,
+            s.trades_per_hour,
+            s.usd_per_hour,
+            s.buy_share * 100.0,
+            map.get(&s.market).map_or("-", String::as_str),
+        );
+    }
+    println!("{table}");
+    if let Some(out) = &args.out {
+        std::fs::write(out, &table)?;
+    }
+    if let Some(dir) = &args.write_configs {
+        std::fs::create_dir_all(dir)?;
+        let template = std::fs::read_to_string(&args.template)?;
+        for s in &rows {
+            let Some(binance) = map.get(&s.market) else {
+                continue;
+            };
+            let meta = read_meta(&args.data.join(&s.market), &s.market)?;
+            let size = order_size(args.order_usd, s.mid, meta.step, meta.min_size);
+            let text = market_config(&template, &s.market, binance, size, size * Decimal::TWO);
+            let path = dir.join(format!("{}.toml", s.market));
+            std::fs::write(&path, text)?;
+            // Make sure it loads (catches a bad template early).
+            crate::config::Config::load(&path)?;
+        }
+        println!("configs written to {}", dir.display());
+    }
+    Ok(())
+}
+
+pub fn market_stats(
+    market: &str,
+    tick: Decimal,
+    quotes: &[Quote],
+    trades: &[Trade],
+) -> Option<MarketStats> {
+    let (first, last) = (quotes.first()?, quotes.last()?);
+    let hours = (last.recv_us.saturating_sub(first.recv_us)) as f64 / 3.6e9;
+    if hours <= 0.0 {
+        return None;
+    }
+    let f = |d: Decimal| d.to_f64().unwrap_or(f64::NAN);
+    let mid_of = |q: &Quote| (q.bid + q.ask) / Decimal::TWO;
+    let mut mids: Vec<Decimal> = quotes.iter().map(mid_of).collect();
+    mids.sort();
+    let mid = mids[mids.len() / 2];
+    let mut spreads: Vec<f64> = quotes
+        .iter()
+        .map(|q| f((q.ask - q.bid) / mid_of(q)) * 1e4)
+        .collect();
+    let mut tops: Vec<f64> = quotes
+        .iter()
+        .map(|q| f((q.bid_qty + q.ask_qty) / Decimal::TWO * mid_of(q)))
+        .collect();
+    tops.sort_by(f64::total_cmp);
+    let usd: f64 = trades.iter().map(|t| f(t.price * t.qty)).sum();
+    let buys = trades.iter().filter(|t| !t.buyer_is_maker).count();
+    Some(MarketStats {
+        market: market.to_string(),
+        hours,
+        mid,
+        tick,
+        spread_bps_p50: quantile_f64(&mut spreads, 0.5),
+        tick_bps: f(tick / mid) * 1e4,
+        top_usd_p50: pick(&tops, 0.5),
+        book_updates_per_sec: quotes.len() as f64 / (hours * 3600.0),
+        trades_per_hour: trades.len() as f64 / hours,
+        usd_per_hour: usd / hours,
+        buy_share: if trades.is_empty() {
+            0.5
+        } else {
+            buys as f64 / trades.len() as f64
+        },
+    })
+}
+
+/// About `usd` worth, rounded up to the lot size, and at least the minimum.
+pub fn order_size(usd: Decimal, price: Decimal, step: Decimal, min_size: Decimal) -> Decimal {
+    if price.is_zero() || step.is_zero() {
+        return min_size;
+    }
+    let size = ((usd / price) / step).ceil() * step;
+    size.max(min_size).normalize()
+}
+
+/// The template config with this market's symbol, reference and sizes.
+pub fn market_config(
+    template: &str,
+    market: &str,
+    binance: &str,
+    order_size: Decimal,
+    max_position: Decimal,
+) -> String {
+    template
+        .lines()
+        .map(|line| {
+            let key = line.split('=').next().unwrap_or("").trim();
+            match key {
+                "symbol" => format!("symbol = \"{market}\""),
+                "binance_symbol" => format!("binance_symbol = \"{binance}\""),
+                "order_size" => format!("order_size = \"{order_size}\""),
+                "max_position" => format!("max_position = \"{max_position}\""),
+                _ => line.to_string(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
+}
+
+#[derive(Deserialize)]
+struct Meta {
+    tick: Decimal,
+    step: Decimal,
+    min_size: Decimal,
+}
+
+fn read_meta(dir: &std::path::Path, market: &str) -> Result<Meta> {
+    let path = dir.join(format!("bullet-{market}-meta.toml"));
+    Ok(toml::from_str(&std::fs::read_to_string(&path)?)?)
+}
+
+fn read_tick(dir: &std::path::Path, market: &str) -> Result<Decimal> {
+    Ok(read_meta(dir, market)?.tick)
+}
+
+/// Bullet market -> Binance symbol, from `binance-map.toml` (empty if missing).
+fn binance_map(path: &std::path::Path) -> std::collections::HashMap<String, String> {
+    #[derive(Deserialize)]
+    struct Entry {
+        binance: String,
+    }
+    #[derive(Deserialize)]
+    struct File {
+        markets: std::collections::HashMap<String, Entry>,
+    }
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|t| toml::from_str::<File>(&t).ok())
+        .map(|f| f.markets.into_iter().map(|(k, v)| (k, v.binance)).collect())
+        .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod screen_tests {
+    use super::*;
+
+    fn d(s: &str) -> Decimal {
+        s.parse().unwrap()
+    }
+
+    #[test]
+    fn orders_are_about_five_dollars_in_whole_lots() {
+        assert_eq!(
+            order_size(d("5"), d("85.86"), d("0.01"), d("0.01")),
+            d("0.06")
+        );
+        assert_eq!(order_size(d("5"), d("0.0036"), d("1"), d("1")), d("1389"));
+        assert_eq!(
+            order_size(d("5"), d("4120"), d("0.001"), d("0.01")),
+            d("0.01"),
+            "never below the minimum"
+        );
+    }
+
+    #[test]
+    fn a_market_config_swaps_only_its_own_settings() {
+        let template = std::fs::read_to_string("backtest.toml").unwrap();
+        let text = market_config(&template, "HYPE-USD", "HYPEUSDT", d("0.07"), d("0.14"));
+        let dir = std::env::temp_dir().join(format!("hft-screen-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("HYPE-USD.toml");
+        std::fs::write(&path, text).unwrap();
+        let c = crate::config::Config::load(&path).unwrap();
+        assert_eq!(
+            (c.symbol.as_str(), c.binance_symbol.as_str()),
+            ("HYPE-USD", "HYPEUSDT")
+        );
+        assert_eq!((c.order_size, c.max_position), (d("0.07"), d("0.14")));
+        assert!(c.dry_run, "still a dry-run config");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn stats_from_a_simple_market() {
+        let q = |t: u64| Quote {
+            recv_us: t,
+            exch_us: t,
+            bid: d("99.99"),
+            bid_qty: d("1"),
+            ask: d("100.01"),
+            ask_qty: d("1"),
+        };
+        let quotes = vec![q(0), q(3_600_000_000)];
+        let trades = vec![
+            Trade {
+                recv_us: 1,
+                exch_us: 1,
+                price: d("100"),
+                qty: d("2"),
+                buyer_is_maker: false,
+            },
+            Trade {
+                recv_us: 2,
+                exch_us: 2,
+                price: d("100"),
+                qty: d("1"),
+                buyer_is_maker: true,
+            },
+        ];
+        let s = market_stats("X-USD", d("0.01"), &quotes, &trades).unwrap();
+        assert!((s.spread_bps_p50 - 2.0).abs() < 1e-9);
+        assert!((s.tick_bps - 1.0).abs() < 1e-9);
+        assert!((s.usd_per_hour - 300.0).abs() < 1e-9);
+        assert_eq!(s.trades_per_hour, 2.0);
+        assert!((s.buy_share - 0.5).abs() < 1e-9);
+    }
+}
