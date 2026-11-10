@@ -362,7 +362,11 @@ impl SimExchange {
         self.orders.retain_mut(|o| {
             let arrives = o.sent_us + latency;
             if o.cancel_at.is_some_and(|c| c <= now) {
-                return false; // cancelled; the market maker already forgot it
+                // Cancelled: confirm it, as Bullet does on the order stream.
+                events.push(Event::OrderGone {
+                    client_id: o.order.client_id,
+                });
+                return false;
             }
             if !o.live && arrives <= now {
                 // Post-only: an order that would take liquidity is rejected.
@@ -930,6 +934,20 @@ mod tests {
         ex.execute(&[Intent::CancelAll], 5000);
         ex.advance(6000);
         assert!(ex.on_trade(&trade("99", "5", true)).is_empty(), "cancelled");
+    }
+
+    #[test]
+    fn a_cancel_is_confirmed_when_it_lands() {
+        let mut ex = sim();
+        ex.on_book(d("99"), d("101"));
+        ex.execute(&[bid("100", 1)], 0);
+        ex.advance(1000);
+        ex.execute(&[Intent::Cancel { client_id: 1 }], 2000);
+        assert!(ex.advance(2500).is_empty(), "not landed yet");
+        assert!(matches!(
+            &ex.advance(3000)[..],
+            [Event::OrderGone { client_id: 1 }]
+        ));
     }
 
     #[test]

@@ -9,7 +9,8 @@
 //!    inventory near zero without ever crossing the spread to dump it.
 //! 3. **Limits.** Don't quote the side that would take us past `max_position`,
 //!    and never price a quote so it would cross the book (it would take,
-//!    not make).
+//!    not make). Orders we've asked to cancel count too: until the exchange
+//!    confirms they're gone, they can still fill.
 
 use rust_decimal::{Decimal, RoundingStrategy};
 
@@ -25,9 +26,13 @@ pub struct Quotes {
     pub ask: Option<Decimal>,
 }
 
+/// `cancelling_buys` / `cancelling_sells`: unfilled size of orders we've
+/// asked to cancel but the exchange hasn't confirmed gone yet.
 pub fn quote(
     fair: Decimal,
     position: Decimal,
+    cancelling_buys: Decimal,
+    cancelling_sells: Decimal,
     config: &Config,
     book: &Book,
     tick: Decimal,
@@ -39,8 +44,9 @@ pub fn quote(
     let bid = fair * (Decimal::ONE - (config.spread_bps + lean_bps) / BPS);
     let ask = fair * (Decimal::ONE + (config.spread_bps - lean_bps) / BPS);
 
-    let room_to_buy = position + config.order_size <= config.max_position;
-    let room_to_sell = position - config.order_size >= -config.max_position;
+    // The worst case: everything that might still fill, fills.
+    let room_to_buy = position + cancelling_buys + config.order_size <= config.max_position;
+    let room_to_sell = position - cancelling_sells - config.order_size >= -config.max_position;
 
     Quotes {
         bid: room_to_buy.then(|| {
@@ -97,7 +103,15 @@ mod tests {
 
     #[test]
     fn flat_quotes_spread_either_side() {
-        let q = quote(d("100"), Decimal::ZERO, &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(
             q,
             Quotes {
@@ -110,7 +124,15 @@ mod tests {
     #[test]
     fn long_leans_both_quotes_down() {
         // Half full: lean 5 bps.
-        let q = quote(d("100"), d("0.5"), &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            d("0.5"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(
             q,
             Quotes {
@@ -122,7 +144,15 @@ mod tests {
 
     #[test]
     fn short_leans_both_quotes_up() {
-        let q = quote(d("100"), d("-0.5"), &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            d("-0.5"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(
             q,
             Quotes {
@@ -134,21 +164,71 @@ mod tests {
 
     #[test]
     fn stops_buying_at_max_long() {
-        let q = quote(d("100"), d("1"), &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            d("1"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(q.bid, None);
         assert!(q.ask.is_some());
     }
 
     #[test]
     fn stops_selling_at_max_short() {
-        let q = quote(d("100"), d("-1"), &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            d("-1"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(q.ask, None);
         assert!(q.bid.is_some());
     }
 
     #[test]
+    fn orders_still_being_cancelled_count_towards_the_max() {
+        // Flat, but 0.95 of bids may still fill: one more 0.1 bid could reach 1.05.
+        let q = quote(
+            d("100"),
+            Decimal::ZERO,
+            d("0.95"),
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
+        assert_eq!(q.bid, None);
+        assert!(q.ask.is_some(), "asks that may still fill don't block bids");
+        let q = quote(
+            d("100"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            d("0.95"),
+            &config(),
+            &wide_book(),
+            TICK,
+        );
+        assert_eq!(q.ask, None);
+    }
+
+    #[test]
     fn stops_buying_when_one_more_order_would_pass_the_max() {
-        let q = quote(d("100"), d("0.95"), &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100"),
+            d("0.95"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(q.bid, None);
     }
 
@@ -156,14 +236,30 @@ mod tests {
     fn never_crosses_the_book() {
         // Fair value says bid 99.90, but the best ask is 99.50.
         let book = Book::from_levels(&[(d("99.40"), d("1"))], &[(d("99.50"), d("1"))]);
-        let q = quote(d("100"), Decimal::ZERO, &config(), &book, TICK);
+        let q = quote(
+            d("100"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &book,
+            TICK,
+        );
         assert_eq!(q.bid, Some(d("99.49")), "one tick under the best ask");
         assert_eq!(q.ask, Some(d("100.10")));
     }
 
     #[test]
     fn rounds_bids_down_and_asks_up_to_the_tick() {
-        let q = quote(d("100.003"), Decimal::ZERO, &config(), &wide_book(), TICK);
+        let q = quote(
+            d("100.003"),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+            &config(),
+            &wide_book(),
+            TICK,
+        );
         assert_eq!(
             q,
             Quotes {

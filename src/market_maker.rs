@@ -33,6 +33,13 @@ pub struct MarketMaker {
     /// When we asked for the resting bid and ask; they expire `quote_ttl_secs` later.
     bid_since: Option<Instant>,
     ask_since: Option<Instant>,
+    /// Orders we've asked to cancel that the exchange hasn't confirmed gone:
+    /// (order, size not yet filled, when we placed it). They can still fill,
+    /// so they count against `max_position` until confirmed, or until they
+    /// expire (`quote_ttl_secs` after placing, when they can't fill any more).
+    cancelling: Vec<(Order, Decimal, Instant)>,
+    /// How much of each live order has filled so far.
+    filled: std::collections::HashMap<u64, Decimal>,
     inventory: Inventory,
     next_client_id: u64,
     last_requote: Option<Instant>,
@@ -59,6 +66,8 @@ impl MarketMaker {
             ask: None,
             bid_since: None,
             ask_since: None,
+            cancelling: Vec::new(),
+            filled: std::collections::HashMap::new(),
             inventory: Inventory::default(),
             next_client_id,
             last_requote: None,
@@ -163,6 +172,10 @@ impl MarketMaker {
 
     /// Compare the quotes we want with what rests, and say what to change.
     pub fn requote(&mut self, now: Instant) -> Vec<Intent> {
+        // Orders past their lifetime can't fill any more.
+        let ttl = Duration::from_secs(self.config.quote_ttl_secs);
+        self.cancelling
+            .retain(|(_, _, placed)| now.duration_since(*placed) < ttl);
         let (wanted, status) = self.wanted_quotes(now);
         if status != self.status {
             tracing::info!("{status}");
@@ -203,7 +216,12 @@ impl MarketMaker {
                 cancels.push(Intent::Cancel {
                     client_id: order.client_id,
                 });
+                let placed = self.since(side).unwrap_or(now);
+                self.start_cancelling(order, placed);
             }
+            // The order we just asked to cancel may still fill: only add a
+            // new one if both filling would stay within the limit.
+            let want = want.filter(|_| self.room_for_one_more(side));
             let new = want.map(|price| Order {
                 side,
                 price,
@@ -238,7 +256,15 @@ impl MarketMaker {
         }
         match self.fair.get(now, self.reference_stale()) {
             Ok(fair) => (
-                strategy::quote(fair, self.inventory.position, &self.config, book, self.tick),
+                strategy::quote(
+                    fair,
+                    self.inventory.position,
+                    self.cancelling_size(Side::Buy),
+                    self.cancelling_size(Side::Sell),
+                    &self.config,
+                    book,
+                    self.tick,
+                ),
                 "quoting",
             ),
             Err(NotReady::NoBinancePrice) => (none, "waiting for Binance"),
@@ -253,6 +279,14 @@ impl MarketMaker {
     fn on_fill(&mut self, fill: &Fill) {
         if !self.inventory.on_fill(fill) {
             return;
+        }
+        if let Some(id) = fill.client_id {
+            *self.filled.entry(id).or_default() += fill.size;
+            for (order, left, _) in &mut self.cancelling {
+                if order.client_id == id {
+                    *left = (*left - fill.size).max(Decimal::ZERO);
+                }
+            }
         }
         if fill.order_finished
             && let Some(id) = fill.client_id
@@ -277,19 +311,60 @@ impl MarketMaker {
         }
     }
 
-    /// Cancel everything and forget it.
+    /// Cancel everything. Our orders still count against the limit until
+    /// the exchange confirms them gone.
     fn pull(&mut self) -> Vec<Intent> {
-        self.bid = None;
-        self.ask = None;
+        for side in [Side::Buy, Side::Sell] {
+            if let Some(order) = self.slot(side).take() {
+                let placed = self.since(side).unwrap_or_else(Instant::now);
+                self.start_cancelling(order, placed);
+            }
+        }
         vec![Intent::CancelAll]
     }
 
+    /// The order is gone from the book (cancelled, rejected or fully filled).
     fn forget(&mut self, client_id: u64) {
         for side in [Side::Buy, Side::Sell] {
             let slot = self.slot(side);
             if slot.is_some_and(|o| o.client_id == client_id) {
                 *slot = None;
             }
+        }
+        self.cancelling.retain(|(o, _, _)| o.client_id != client_id);
+        self.filled.remove(&client_id);
+    }
+
+    fn start_cancelling(&mut self, order: Order, placed: Instant) {
+        let filled = self
+            .filled
+            .get(&order.client_id)
+            .copied()
+            .unwrap_or_default();
+        let left = (order.size - filled).max(Decimal::ZERO);
+        if left > Decimal::ZERO {
+            self.cancelling.push((order, left, placed));
+        }
+    }
+
+    /// Unfilled size of orders on `side` that we're waiting to see cancelled.
+    fn cancelling_size(&self, side: Side) -> Decimal {
+        self.cancelling
+            .iter()
+            .filter(|(o, _, _)| o.side == side)
+            .map(|(_, left, _)| *left)
+            .sum()
+    }
+
+    /// Would one more order on `side` stay within `max_position`, even if
+    /// everything still able to fill on that side fills?
+    fn room_for_one_more(&self, side: Side) -> bool {
+        let size = self.config.order_size;
+        let max = self.config.max_position;
+        let position = self.inventory.position;
+        match side {
+            Side::Buy => position + self.cancelling_size(Side::Buy) + size <= max,
+            Side::Sell => position - self.cancelling_size(Side::Sell) - size >= -max,
         }
     }
 
@@ -681,6 +756,91 @@ mod tests {
         assert!(
             mm.requote(now).is_empty(),
             "no book until the next snapshot"
+        );
+    }
+
+    /// Buy 1 on our resting bid, then let the market move 10 bps so that
+    /// the next bid (placed at position 1) has to be replaced.
+    fn long_one_with_a_bid_to_replace() -> (MarketMaker, Instant, u64) {
+        let (mut mm, now) = warmed_up();
+        let first = mm.requote(now);
+        let Intent::Place(bid) = first[0] else {
+            panic!()
+        };
+        mm.on_event(
+            &Event::Fill(Fill {
+                trade_id: 1,
+                client_id: Some(bid.client_id),
+                side: Side::Buy,
+                price: bid.price,
+                size: d("1"),
+                fee: Decimal::ZERO,
+                order_finished: true,
+            }),
+            now,
+        );
+        let again = mm.requote(now);
+        let new_bid = again
+            .iter()
+            .find_map(|i| match i {
+                Intent::Place(o) if o.side == Side::Buy => Some(o.client_id),
+                _ => None,
+            })
+            .expect("room for one more bid at position 1");
+        mm.on_event(
+            &Event::Reference {
+                bid: d("99.6"),
+                ask: d("100.6"),
+                stamp: Stamp::at(now),
+            },
+            now,
+        );
+        (mm, now, new_bid)
+    }
+
+    #[test]
+    fn a_bid_being_cancelled_still_counts_against_the_position_limit() {
+        // Position 1, max 2: the old bid (1) may still fill while its cancel
+        // is on the way, so a new bid (1) on top could take us to 3.
+        let (mut mm, now, old_bid) = long_one_with_a_bid_to_replace();
+        let intents = mm.requote(now);
+        assert!(intents.contains(&Intent::Cancel { client_id: old_bid }));
+        assert!(
+            !places(&intents).iter().any(|(s, _)| *s == Side::Buy),
+            "no new bid until the old one is confirmed gone: {intents:?}"
+        );
+        // The exchange confirms the cancel: now there's room again.
+        mm.on_event(&Event::OrderGone { client_id: old_bid }, now);
+        assert_eq!(
+            places(&mm.requote(now))
+                .iter()
+                .filter(|(s, _)| *s == Side::Buy)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn an_unconfirmed_cancel_stops_counting_once_the_order_has_expired() {
+        let (mut mm, now, _) = long_one_with_a_bid_to_replace();
+        mm.requote(now);
+        // No confirmation ever comes, but the order expires after its TTL.
+        let later = now + Duration::from_secs(mm.config.quote_ttl_secs + 1);
+        let book = mm.book.clone().unwrap().0;
+        mm.on_event(
+            &Event::Reference {
+                bid: d("99.6"),
+                ask: d("100.6"),
+                stamp: Stamp::at(later),
+            },
+            later,
+        );
+        mm.on_event(&Event::Book(book, Stamp::at(later)), later);
+        assert!(
+            places(&mm.requote(later))
+                .iter()
+                .any(|(s, _)| *s == Side::Buy),
+            "expired orders can't fill, so they no longer count"
         );
     }
 }

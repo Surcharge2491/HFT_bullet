@@ -1,10 +1,10 @@
 == PROXY OOS 2026-10-09..2026-11-08 ref=perp SOLUSDT, Bullet imitated from spot SOLUSDC, spread=2bps, fee 0 ==
 backtest 2026-10-09 00:00:00Z -> 2026-11-08 23:59:59Z (744.00 h, 14139011 events)
-  pnl            $-18.7686 (after $0 fees)
-  max drawdown   $34.6900
-  fills          257780 (bought 5935.41, sold 5935.43, $1170543.37 traded)
-  position       end -0.02, max |0.15|
-  quoting        both sides 74.3% of the time, 3240 orders rejected as crossing
-  markout        +1s -0.32 bps, +10s -0.33 bps (mean per fill; negative = adverse selection)
-  daily          31 days, 7 positive, mean $-0.6054, sd $2.0945, Sharpe -5.52 (annualised, 365 d)
+  pnl            $-19.5259 (after $0 fees)
+  max drawdown   $34.4860
+  fills          253415 (bought 5830.06, sold 5830.10, $1149801.18 traded)
+  position       end -0.04, max |0.10|
+  quoting        both sides 71.9% of the time, 3177 orders rejected as crossing
+  markout        +1s -0.33 bps, +10s -0.34 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 7 positive, mean $-0.6299, sd $2.0544, Sharpe -5.86 (annualised, 365 d)
   final status   quoting
