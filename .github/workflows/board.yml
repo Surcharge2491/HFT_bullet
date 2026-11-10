@@ -17,6 +17,11 @@ on:
   schedule:
     - cron: "17 * * * *" # hourly, to pick up cards in the other repos
 
+# One sync at a time: two at once race to add the same card and one fails.
+concurrency:
+  group: board
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
