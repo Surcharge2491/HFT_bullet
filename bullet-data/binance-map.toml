@@ -1,0 +1,37 @@
+# Bullet market -> the Binance USD-M perp that tracks it, for fetch-binance and
+# for the fair price. Checked 2026-11-10 by comparing prices (Bullet now vs
+# Binance's last 2026-11-08 trade; same asset = within a few percent).
+#
+# kind = "same"  : the same asset (fair price = Binance price + learned gap)
+# kind = "scaled": an ETF tracking the index at a different price level. The
+#                  bot adds a fixed gap rather than scaling, so it can't quote
+#                  these yet; recorded for research only.
+# Left out: SPXUSDT is the SPX6900 memecoin, not the S&P 500.
+
+[markets]
+"SOL-USD"      = { binance = "SOLUSDT",     kind = "same" }
+"ENA-USD"      = { binance = "ENAUSDT",     kind = "same" }
+"HYPE-USD"     = { binance = "HYPEUSDT",    kind = "same" }
+"LIT-USD"      = { binance = "LITUSDT",     kind = "same" }
+"NEAR-USD"     = { binance = "NEARUSDT",    kind = "same" }
+"ONDO-USD"     = { binance = "ONDOUSDT",    kind = "same" }
+"PUMP-USD"     = { binance = "PUMPUSDT",    kind = "same" }
+"RAY-USD"      = { binance = "RAYSOLUSDT",  kind = "same" }
+"TAO-USD"      = { binance = "TAOUSDT",     kind = "same" }
+"TIA-USD"      = { binance = "TIAUSDT",     kind = "same" }
+"UNI-USD"      = { binance = "UNIUSDT",     kind = "same" }
+"ZEC-USD"      = { binance = "ZECUSDT",     kind = "same" }
+"GOLD-USD"     = { binance = "XAUUSDT",     kind = "same" }
+"SILVER-USD"   = { binance = "XAGUSDT",     kind = "same" }
+"WTIOIL-USD"   = { binance = "CLUSDT",      kind = "same" }
+"BRENTOIL-USD" = { binance = "BZUSDT",      kind = "same" }
+"TSLA-USD"     = { binance = "TSLAUSDT",    kind = "same" }
+"NVDA-USD"     = { binance = "NVDAUSDT",    kind = "same" }
+"MU-USD"       = { binance = "MUUSDT",      kind = "same" }
+"SNDK-USD"     = { binance = "SNDKUSDT",    kind = "same" }
+"SPCX-USD"     = { binance = "SPCXUSDT",    kind = "same" }
+"SKHYNIX-USD"  = { binance = "SKHYNIXUSDT", kind = "same" }
+"BNC-USD"      = { binance = "BNCUSDT",     kind = "same" }
+"UNITREE-USD"  = { binance = "UNITREEUSDT", kind = "same" }
+"US100-USD"    = { binance = "QQQUSDT",     kind = "scaled" }
+"US500-USD"    = { binance = "SPYUSDT",     kind = "scaled" }

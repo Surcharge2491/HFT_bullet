@@ -1,0 +1,4 @@
+symbol = "US100-USD"
+tick = "1"
+step = "0.0001"
+min_size = "0.0001"

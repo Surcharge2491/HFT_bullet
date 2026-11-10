@@ -1,0 +1,4 @@
+symbol = "PUMP-USD"
+tick = "0.0000001"
+step = "1000"
+min_size = "1000"

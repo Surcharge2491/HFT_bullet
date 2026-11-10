@@ -1,0 +1,4 @@
+symbol = "ENA-USD"
+tick = "0.00001"
+step = "10"
+min_size = "10"
