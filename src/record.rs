@@ -7,8 +7,8 @@
 //! are `marketdata.rs` CSVs, one per stream per UTC day:
 //!
 //! ```text
-//! data/binance-SOLUSDT-quotes-2026-11-02.csv   data/bullet-SOL-USD-quotes-2026-11-02.csv
-//! data/binance-SOLUSDT-trades-2026-11-02.csv   data/bullet-SOL-USD-trades-2026-11-02.csv
+//! data/binance-perp-SOLUSDT-quotes-2026-11-02.csv  data/bullet-SOL-USD-quotes-2026-11-02.csv
+//! data/binance-perp-SOLUSDT-trades-2026-11-02.csv  data/bullet-SOL-USD-trades-2026-11-02.csv
 //! data/bullet-SOL-USD-meta.toml                (tick and lot size, for the backtest)
 //! ```
 //!
@@ -84,14 +84,14 @@ pub async fn run(config_path: &Path, out: &Path, minutes: Option<u64>) -> Result
         (
             Stream::BinanceQuotes,
             (
-                format!("binance-{}-quotes", config.binance_symbol),
+                format!("binance-perp-{}-quotes", config.binance_symbol),
                 QUOTES_HEADER,
             ),
         ),
         (
             Stream::BinanceTrades,
             (
-                format!("binance-{}-trades", config.binance_symbol),
+                format!("binance-perp-{}-trades", config.binance_symbol),
                 TRADES_HEADER,
             ),
         ),

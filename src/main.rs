@@ -8,6 +8,7 @@ mod binance;
 mod book;
 mod bot;
 mod bullet;
+mod calibrate;
 mod config;
 mod events;
 mod executor;
@@ -17,6 +18,7 @@ mod inventory;
 mod key;
 mod market_maker;
 mod marketdata;
+mod proxy;
 mod record;
 mod strategy;
 mod telemetry;
@@ -53,7 +55,10 @@ enum Command {
     },
     /// Download Binance history from data.binance.vision into our CSV format.
     FetchBinance {
-        /// The Binance USD-M perp, e.g. SOLUSDT.
+        /// perp (USD-M futures) or spot.
+        #[arg(long, value_enum, default_value = "perp")]
+        market: fetch::Market,
+        /// The Binance symbol, e.g. SOLUSDT or SOLUSDC.
         #[arg(long, default_value = "SOLUSDT")]
         symbol: String,
         /// book-ticker (best bid/ask; published up to 2024-03-30) or agg-trades.
@@ -83,6 +88,8 @@ enum Command {
     },
     /// Replay recorded data through the market maker with a simulated exchange.
     Backtest(backtest::Args),
+    /// Measure Bullet from recordings against a Binance tape (for --proxy backtests).
+    Calibrate(calibrate::Args),
 }
 
 #[tokio::main]
@@ -108,19 +115,21 @@ async fn main() -> Result<()> {
         Command::Run { config } => bot::run(&config, cli.live).await,
         Command::Keygen { path, network } => keygen(&path, &network),
         Command::FetchBinance {
+            market,
             symbol,
             dataset,
             from,
             to,
             out,
             mirror,
-        } => fetch::run(&symbol, dataset, &from, &to, &out, mirror).await,
+        } => fetch::run(market, &symbol, dataset, &from, &to, &out, mirror).await,
         Command::Record {
             config,
             out,
             minutes,
         } => record::run(&config, &out, minutes).await,
         Command::Backtest(args) => backtest::run(&args),
+        Command::Calibrate(args) => calibrate::run(&args),
     }
 }
 

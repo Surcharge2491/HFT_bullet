@@ -99,48 +99,78 @@ place by hand on the same account.
 
 ## Backtesting
 
-Three extra commands replay history through the same `MarketMaker` the live
-bot runs. Only the clock and the exchange are simulated.
+Extra commands replay history through the same `MarketMaker` the live bot
+runs. Only the clock and the exchange are simulated. Use `backtest.toml`: the
+same strategy as `bot.toml`, minus the $2 loss stop, so long runs show every
+day.
 
 ```sh
-# 1. Binance history (data.binance.vision). --mirror uses its S3 bucket if the main host is blocked.
-cargo run -- fetch-binance --dataset agg-trades  --from 2026-10-01 --to 2026-10-31
-cargo run -- fetch-binance --dataset book-ticker --from 2024-03-01 --to 2024-03-30   # last published day
+# 1. Binance history (data.binance.vision; --mirror uses its S3 bucket if the main host is blocked)
+cargo run --release -- fetch-binance --market perp --symbol SOLUSDT --dataset agg-trades --from 2026-08-09 --to 2026-11-09
+cargo run --release -- fetch-binance --market spot --symbol SOLUSDC --dataset agg-trades --from 2026-11-09 --to 2026-11-09
 
-# 2. Bullet history: its API has no market-data history, so record it (both venues, until Ctrl-C)
-cargo run -- record --out data
+# 2. Bullet history: there is none to download, so record it (until Ctrl-C)
+cargo run --release -- record --out bullet-data
 
-# 3. Replay
-cargo run --release -- backtest \
-  --binance-quotes data/binance-SOLUSDT-quotes-*.csv \
-  --bullet-quotes  data/bullet-SOL-USD-quotes-*.csv \
-  --bullet-trades  data/bullet-SOL-USD-trades-*.csv \
-  --latency-ms 25 --maker-fee-bps 0 --equity-out equity.csv
+# 3a. REAL backtest: the recorded hours, against Binance for the same day
+cargo run --release -- backtest --config backtest.toml \
+  --binance-trades data/binance-perp-SOLUSDT-trades-2026-11-09.csv \
+  --bullet-quotes  bullet-data/bullet-SOL-USD-quotes-2026-11-09.csv \
+  --bullet-trades  bullet-data/bullet-SOL-USD-trades-2026-11-09.csv
+
+# 3b. PROXY backtest over months: measure Bullet once, then imitate it on Binance history
+cargo run --release -- calibrate --bullet-quotes bullet-data/bullet-SOL-USD-quotes-*.csv \
+  --bullet-trades bullet-data/bullet-SOL-USD-trades-*.csv \
+  --tape data/binance-perp-SOLUSDT-trades-2026-11-09.csv --tape-label "perp SOLUSDT" \
+  --out bullet-data/profile-vs-perp-SOLUSDT.toml
+cargo run --release -- backtest --config backtest.toml \
+  --binance-trades data/binance-perp-SOLUSDT-trades-2026-*.csv \
+  --proxy-tape     data/binance-perp-SOLUSDT-trades-2026-*.csv \
+  --profile bullet-data/profile-vs-perp-SOLUSDT.toml --report-out reports/proxy.txt
 ```
 
 | File | |
 |------|--|
-| `src/marketdata.rs` | The CSV format all three share (`recv_us,exch_us,...`) |
-| `src/fetch.rs` | Binance archive download and conversion |
+| `src/marketdata.rs` | The CSV format everything shares (`recv_us,exch_us,...`) |
+| `src/fetch.rs` | Binance archive download (perp or spot) and conversion |
 | `src/record.rs` | Live recorder: Binance bookTicker + aggTrade, Bullet depth (top of book) + trades |
+| `src/calibrate.rs` | Measures Bullet from recordings: spread, trade rate and sizes, gap and lag to Binance |
+| `src/proxy.rs` | A stand-in Bullet built from a Binance tape and that profile (PROXY runs) |
 | `src/backtest.rs` | Time-ordered replay, `SimExchange` (latency, post-only rejects, TTL, fills), report |
 
-Fill model: a Bullet trade *through* our price fills us (up to its size); the
+**Fills.** A Bullet trade *through* our price fills us (up to its size); the
 book moving through our price fills us in full; `--fill-at-touch` also fills on
 trades *at* our price (assumes we're first in the queue, so it's optimistic).
-The report gives PnL, drawdown, fills, time quoting, and fill markouts at
-+1 s / +10 s. Negative markouts mean we're being picked off.
+The report gives PnL, drawdown, fills, time quoting, fill markouts at
++1 s / +10 s (negative means we're being picked off) and, over several days,
+daily PnL and Sharpe.
 
-Where to record: Binance answers 403 to some regions and cloud IP ranges
+**REAL vs PROXY.** A REAL run replays Bullet as we recorded it: exact for
+Bullet, but only as long as we've recorded. A PROXY run imitates Bullet over
+any Binance history: the book follows the tape with the measured lag, gap
+(which wanders as much as measured) and spread; trades are a sample of real
+Binance trades thinned to Bullet's rate, with Bullet-like sizes. It tests
+whether the pricing logic survives months of markets, not what Bullet would
+have paid. Check it against REAL on the recorded days before trusting it.
+
+**Which Binance market is the fair price.** Live, the bot reads Binance's
+best bid/ask, which updates many times a second. The archive only has trades,
+and the bot pulls quotes, and re-learns the Binance-to-Bullet gap for 60 s,
+whenever its reference goes 5 s without an update. Over a day, the SOLUSDT perp
+tape is silent for more than 5 s only 0.5% of the time; SOLUSDC perp 36%, and
+SOLUSDC spot 43%. So backtests use the SOLUSDT perp. A USDC reference can only
+be judged live (or from your own `record`ings).
+
+**Where to record.** Binance answers 403 to some regions and cloud IP ranges
 (US ones among them), so run `record` where the live bot would run (the Tokyo
 box from Part 4), not in a US cloud sandbox. Bullet's API has no market
 history at all: `/fapi/v1/trades` holds only the last 1000 trades (about
 1.5 h of SOL-USD), and the Celestia data-availability route is still "in
-development" in Bullet's docs. Recording is the only source for now.
+development" in Bullet's docs. Recording is the only source.
 
-Binance's archive has no receive times, and `bookTicker` stops after
-2024-03-30. Recordings from `record` carry real receive times. Bullet history
-only exists from when you start recording.
+Binance's archive has no receive times, so `backtest` adds
+`--reference-delay-ms` (default 2 ms, Binance to Tokyo) to archive rows.
+Binance publishes each day around 07:00-09:00 UTC the next morning.
 
 ## The code
 

@@ -15,10 +15,32 @@ use rust_decimal::Decimal;
 
 use crate::marketdata::{CsvWriter, QUOTES_HEADER, Quote, TRADES_HEADER, Trade, parse_bool};
 
-const BASE: &str = "https://data.binance.vision/data/futures/um/daily";
+const BASE: &str = "https://data.binance.vision/data";
 /// The S3 bucket behind data.binance.vision, for networks that block the main host.
-const MIRROR: &str =
-    "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/data/futures/um/daily";
+const MIRROR: &str = "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision/data";
+
+/// Which Binance market: the USD-M perpetual futures, or spot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Market {
+    Perp,
+    Spot,
+}
+
+impl Market {
+    fn path(self) -> &'static str {
+        match self {
+            Market::Perp => "futures/um/daily",
+            Market::Spot => "spot/daily",
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Market::Perp => "perp",
+            Market::Spot => "spot",
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum Dataset {
@@ -44,6 +66,7 @@ impl Dataset {
 
 /// Fetch `dataset` for every day from `from` to `to` (inclusive, YYYY-MM-DD).
 pub async fn run(
+    market: Market,
     symbol: &str,
     dataset: Dataset,
     from: &str,
@@ -52,10 +75,11 @@ pub async fn run(
     mirror: bool,
 ) -> Result<()> {
     let http = reqwest::Client::new();
-    let base = if mirror { MIRROR } else { BASE };
+    let base = format!("{}/{}", if mirror { MIRROR } else { BASE }, market.path());
     for day in days(from, to)? {
         let target = out.join(format!(
-            "binance-{symbol}-{}-{day}.csv",
+            "binance-{}-{symbol}-{}-{day}.csv",
+            market.name(),
             dataset.local_name()
         ));
         if target.exists() {
@@ -67,7 +91,8 @@ pub async fn run(
         tracing::info!("downloading {url}");
         let response = http.get(&url).send().await?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            tracing::warn!("{day}: not published (bookTicker stops after 2024-03-30)");
+            // bookTicker stops after 2024-03-30; anything stops at yesterday or earlier.
+            tracing::warn!("{day}: not published (yet)");
             continue;
         }
         let bytes = response.error_for_status()?.bytes().await?;
@@ -135,13 +160,16 @@ fn book_ticker_row(line: &str) -> Result<Quote> {
     })
 }
 
-/// `agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker` (ms)
+/// `agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker[,is_best_match]`.
+/// Futures times are in ms. Spot times switched to µs in 2025, so we go by size:
+/// a time past 10^14 can't be ms (that would be the year 5138).
 fn agg_trade_row(line: &str) -> Result<Trade> {
     let f: Vec<&str> = line.split(',').collect();
     if f.len() < 7 {
         bail!("aggTrades row has {} fields: {line}", f.len());
     }
-    let us = f[5].parse::<u64>()? * 1000;
+    let t = f[5].parse::<u64>()?;
+    let us = if t > 100_000_000_000_000 { t } else { t * 1000 };
     Ok(Trade {
         recv_us: us,
         exch_us: us,
@@ -227,5 +255,17 @@ mod tests {
         })
         .unwrap();
         assert_eq!(out, ["1700000000000000,1700000000000000,150.11,0.5,true"]);
+    }
+
+    #[test]
+    fn spot_rows_in_microseconds_keep_their_time() {
+        let spot = "5,150.11,0.5,9,10,1700000000000123,false,true\n";
+        let mut out = Vec::new();
+        convert_lines(Dataset::AggTrades, spot.as_bytes(), |l| {
+            out.push(l);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(out, ["1700000000000123,1700000000000123,150.11,0.5,false"]);
     }
 }

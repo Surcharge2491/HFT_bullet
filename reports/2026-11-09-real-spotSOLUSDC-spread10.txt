@@ -1,0 +1,9 @@
+== REAL 2026-11-09 02:09-04:11 ref=spot SOLUSDC (too sparse, see README) spread=10bps ==
+backtest 2026-11-09 02:09:00Z -> 2026-11-09 04:11:54Z (2.05 h, 56901 events)
+  pnl            $0.0534 (after $0 fees)
+  max drawdown   $0.0740
+  fills          2 (bought 0, sold 0.10, $8.81 traded)
+  position       end -0.10, max |0.10|
+  quoting        both sides 2.1% of the time, 0 orders rejected as crossing
+  markout        +1s -1.05 bps, +10s -3.20 bps (mean per fill; negative = adverse selection)
+  final status   Binance price is stale, not quoting

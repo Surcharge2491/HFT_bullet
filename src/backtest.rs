@@ -52,7 +52,7 @@ pub struct Args {
     #[arg(long, num_args = 1..)]
     pub binance_trades: Vec<PathBuf>,
     /// Bullet top-of-book files (`bullet-*-quotes-*.csv`, from `record`).
-    #[arg(long, num_args = 1.., required = true)]
+    #[arg(long, num_args = 1..)]
     pub bullet_quotes: Vec<PathBuf>,
     /// Bullet trade files (`bullet-*-trades-*.csv`, from `record`).
     #[arg(long, num_args = 1..)]
@@ -71,28 +71,69 @@ pub struct Args {
     /// Also fill on trades exactly at our price (assumes we're first in line).
     #[arg(long)]
     pub fill_at_touch: bool,
-    /// Write position and PnL once a second to this CSV.
+    /// Write position and PnL to this CSV, every `--equity-every-secs`.
     #[arg(long)]
     pub equity_out: Option<PathBuf>,
+    #[arg(long, default_value_t = 60)]
+    pub equity_every_secs: u64,
+    /// Archive Binance rows only have Binance's own timestamp. Add this much
+    /// delay (ms) to them, for the trip from Binance to us (~2 ms from Tokyo).
+    /// Rows we recorded ourselves already carry our receive time.
+    #[arg(long, default_value_t = 2)]
+    pub reference_delay_ms: u64,
+    /// PROXY mode: build a stand-in Bullet from these Binance trade files
+    /// (see `proxy.rs`) instead of reading Bullet recordings. Needs `--profile`.
+    #[arg(long, num_args = 1..)]
+    pub proxy_tape: Vec<PathBuf>,
+    /// Bullet profile from `calibrate`, for PROXY mode.
+    #[arg(long)]
+    pub profile: Option<PathBuf>,
+    /// Seed for the proxy's random trade sampling.
+    #[arg(long, default_value_t = 1)]
+    pub seed: u64,
+    /// A name for this run, printed in the report.
+    #[arg(long, default_value = "")]
+    pub label: String,
+    /// Also write the report to this file.
+    #[arg(long)]
+    pub report_out: Option<PathBuf>,
 }
 
 pub fn run(args: &Args) -> Result<()> {
     let config = Config::load(&args.config)?;
+    let proxy = !args.proxy_tape.is_empty();
+    if !proxy && args.bullet_quotes.is_empty() {
+        bail!("give --bullet-quotes (recordings), or --proxy-tape and --profile (PROXY mode)");
+    }
+    let meta_near = if proxy {
+        args.profile.iter().cloned().collect::<Vec<_>>()
+    } else {
+        args.bullet_quotes.clone()
+    };
     let tick = match args.tick {
         Some(t) => t,
-        None => tick_from_meta(&args.bullet_quotes, &config.symbol)?,
+        None => tick_from_meta(&meta_near, &config.symbol)?,
     };
+    let delay = args.reference_delay_ms * 1000;
+    // Archive rows have recv == exch; give them a realistic arrival time.
+    let arrive = move |us: u64, exch: u64| if us == exch { us + delay } else { us };
     let reference: Box<dyn Iterator<Item = Result<Market>>> = if !args.binance_quotes.is_empty() {
         Box::new(
-            CsvReader::open(args.binance_quotes.clone(), Quote::parse)
-                .map(|q| q.map(Market::Reference)),
+            CsvReader::open(args.binance_quotes.clone(), Quote::parse).map(move |q| {
+                q.map(|q| {
+                    Market::Reference(Quote {
+                        recv_us: arrive(q.recv_us, q.exch_us),
+                        ..q
+                    })
+                })
+            }),
         )
     } else if !args.binance_trades.is_empty() {
         Box::new(
-            CsvReader::open(args.binance_trades.clone(), Trade::parse).map(|t| {
+            CsvReader::open(args.binance_trades.clone(), Trade::parse).map(move |t| {
                 t.map(|t| {
                     Market::Reference(Quote {
-                        recv_us: t.recv_us,
+                        recv_us: arrive(t.recv_us, t.exch_us),
                         exch_us: t.exch_us,
                         bid: t.price,
                         bid_qty: t.qty,
@@ -105,11 +146,47 @@ pub fn run(args: &Args) -> Result<()> {
     } else {
         bail!("give --binance-quotes or --binance-trades: the bot needs a reference price");
     };
-    let bullet_book = CsvReader::open(args.bullet_quotes.clone(), Quote::parse)
-        .map(|q| q.map(Market::BulletBook));
-    let bullet_trades = CsvReader::open(args.bullet_trades.clone(), Trade::parse)
-        .map(|t| t.map(Market::BulletTrade));
-    if args.bullet_trades.is_empty() {
+    // With recordings, only replay the time we recorded Bullet (plus two
+    // minutes before, for the bot to warm up): outside it there is no Bullet.
+    let reference: Box<dyn Iterator<Item = Result<Market>>> = if proxy {
+        reference
+    } else {
+        let (mut first, mut last) = (u64::MAX, 0);
+        for q in CsvReader::open(args.bullet_quotes.clone(), Quote::parse) {
+            let q = q?;
+            first = first.min(q.recv_us);
+            last = last.max(q.recv_us);
+        }
+        let from = first.saturating_sub(120_000_000);
+        Box::new(reference.filter(move |m| {
+            m.as_ref()
+                .map_or(true, |m| (from..=last).contains(&m.recv_us()))
+        }))
+    };
+    let mut sources: Vec<Box<dyn Iterator<Item = Result<Market>>>> = vec![reference];
+    if proxy {
+        let Some(path) = &args.profile else {
+            bail!("PROXY mode needs --profile (from `calibrate`)");
+        };
+        let profile: crate::calibrate::Profile = toml::from_str(
+            &std::fs::read_to_string(path)
+                .with_context(|| format!("reading {}", path.display()))?,
+        )?;
+        let tape = CsvReader::open(args.proxy_tape.clone(), Trade::parse);
+        sources.push(Box::new(crate::proxy::ProxyVenue::new(
+            tape, &profile, tick, args.seed,
+        )));
+    } else {
+        sources.push(Box::new(
+            CsvReader::open(args.bullet_quotes.clone(), Quote::parse)
+                .map(|q| q.map(Market::BulletBook)),
+        ));
+        sources.push(Box::new(
+            CsvReader::open(args.bullet_trades.clone(), Trade::parse)
+                .map(|t| t.map(Market::BulletTrade)),
+        ));
+    }
+    if !proxy && args.bullet_trades.is_empty() {
         tracing::warn!(
             "no --bullet-trades: fills only come from the book moving through our quotes"
         );
@@ -127,21 +204,24 @@ pub fn run(args: &Args) -> Result<()> {
         }
         None => None,
     };
-    let report = replay(
+    let mut report = replay(
         config,
         tick,
         sim,
-        vec![
-            Box::new(reference),
-            Box::new(bullet_book),
-            Box::new(bullet_trades),
-        ],
-        equity.as_mut(),
+        sources,
+        equity.as_mut().map(|w| (w, args.equity_every_secs.max(1))),
     )?;
     if let Some(e) = &mut equity {
         e.flush()?;
     }
+    report.label = format!("{}{}", if proxy { "PROXY " } else { "" }, args.label);
     println!("{report}");
+    if let Some(p) = &args.report_out {
+        if let Some(dir) = p.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        std::fs::write(p, format!("{report}\n"))?;
+    }
     Ok(())
 }
 
@@ -420,6 +500,10 @@ pub struct Report {
     pub markout_1s: Vec<f64>,
     pub markout_10s: Vec<f64>,
     pub status: String,
+    /// Shown first in the report ("PROXY ..." for proxy runs).
+    pub label: String,
+    /// Profit made each UTC day.
+    pub daily_pnl: Vec<(String, Decimal)>,
 }
 
 impl std::fmt::Display for Report {
@@ -432,6 +516,9 @@ impl std::fmt::Display for Report {
                 v.iter().sum::<f64>() / v.len() as f64
             }
         };
+        if !self.label.is_empty() {
+            writeln!(f, "== {} ==", self.label)?;
+        }
         writeln!(
             f,
             "backtest {} -> {} ({hours:.2} h, {} events)",
@@ -471,6 +558,27 @@ impl std::fmt::Display for Report {
             mean(&self.markout_1s),
             mean(&self.markout_10s)
         )?;
+        if self.daily_pnl.len() >= 2 {
+            let days: Vec<f64> = self
+                .daily_pnl
+                .iter()
+                .map(|(_, p)| p.to_f64().unwrap_or(0.0))
+                .collect();
+            let m = mean(&days);
+            let sd = (days.iter().map(|x| (x - m).powi(2)).sum::<f64>() / (days.len() - 1) as f64)
+                .sqrt();
+            writeln!(
+                f,
+                "  daily          {} days, {} positive, mean ${m:.4}, sd ${sd:.4}, Sharpe {:.2} (annualised, 365 d)",
+                days.len(),
+                days.iter().filter(|p| **p > 0.0).count(),
+                if sd > 0.0 {
+                    m / sd * 365f64.sqrt()
+                } else {
+                    f64::NAN
+                }
+            )?;
+        }
         write!(f, "  final status   {}", self.status)
     }
 }
@@ -492,7 +600,7 @@ pub fn replay<'a>(
     tick: Decimal,
     sim: SimConfig,
     sources: Vec<Box<dyn Iterator<Item = Result<Market>> + 'a>>,
-    mut equity: Option<&mut CsvWriter>,
+    mut equity: Option<(&mut CsvWriter, u64)>,
 ) -> Result<Report> {
     let mut input = Merged {
         sources: sources.into_iter().map(Iterator::peekable).collect(),
@@ -508,6 +616,8 @@ pub fn replay<'a>(
     let t0 = first.recv_us();
     report.start_us = t0;
     let at = |us: u64| base + Duration::from_micros(us.saturating_sub(t0));
+    // (day number, PnL when it started), for the per-day profit.
+    let mut day_mark: Option<(u64, Decimal)> = None;
     let mut next_second = t0 + 1_000_000;
     let mut mid: Option<Decimal> = None;
     let mut peak = Decimal::ZERO;
@@ -548,13 +658,28 @@ pub fn replay<'a>(
             exchange.execute(&intents, t);
             // Per-second bookkeeping.
             report.seconds += 1;
+            if let Some(pnl) = mm.pnl() {
+                let day = t / 86_400_000_000;
+                match day_mark {
+                    None => day_mark = Some((day, pnl)),
+                    Some((d, start)) if d != day => {
+                        report
+                            .daily_pnl
+                            .push((crate::fetch::date_string(d as i64), pnl - start));
+                        day_mark = Some((day, pnl));
+                    }
+                    _ => {}
+                }
+            }
             report.seconds_quoting_both += u64::from(exchange.quoting_both());
             let pos = mm.position();
             report.max_abs_position = report.max_abs_position.max(pos.abs());
             if let Some(pnl) = mm.pnl() {
                 peak = peak.max(pnl);
                 report.max_drawdown = report.max_drawdown.max(peak - pnl);
-                if let Some(w) = equity.as_deref_mut() {
+                if let Some((w, every)) = equity.as_mut()
+                    && (t - t0) / 1_000_000 % *every == 0
+                {
                     w.row(&format!(
                         "{t},{},{pos},{},{}",
                         show(mid),
@@ -654,6 +779,11 @@ pub fn replay<'a>(
     }
     report.final_position = mm.position();
     report.final_pnl = mm.pnl();
+    if let (Some((d, start)), Some(pnl)) = (day_mark, report.final_pnl) {
+        report
+            .daily_pnl
+            .push((crate::fetch::date_string(d as i64), pnl - start));
+    }
     report.rejected = exchange.rejected;
     report.status = mm.status().to_string();
     Ok(report)
