@@ -112,24 +112,26 @@ day.
 cargo run --release -- fetch-binance --market perp --symbol SOLUSDT --dataset agg-trades --from 2026-08-09 --to 2026-11-09
 cargo run --release -- fetch-binance --market spot --symbol SOLUSDC --dataset agg-trades --from 2026-11-09 --to 2026-11-09
 
-# 2. Bullet history: there is none to download, so record it (until Ctrl-C)
-cargo run --release -- record --out bullet-data
+# 2. Bullet history: there is none to download, so record it (until Ctrl-C).
+#    All markets except the blue chips (BTC, ETH, XRP, DOGE); add --no-binance where Binance answers 403.
+cargo run --release -- record --markets all
+scripts/sync-recordings.sh     # copy finished hours into bullet-data/ (then commit)
 
 # 3a. REAL backtest: the recorded hours, against Binance for the same day
 cargo run --release -- backtest --config backtest.toml \
   --binance-trades data/binance-perp-SOLUSDT-trades-2026-11-09.csv \
-  --bullet-quotes  bullet-data/bullet-SOL-USD-quotes-2026-11-09.csv \
-  --bullet-trades  bullet-data/bullet-SOL-USD-trades-2026-11-09.csv
+  --bullet-quotes  bullet-data/SOL-USD/bullet-SOL-USD-quotes-2026-11-09T*.csv.gz \
+  --bullet-trades  bullet-data/SOL-USD/bullet-SOL-USD-trades-2026-11-09T*.csv.gz
 
 # 3b. PROXY backtest over months: measure Bullet once, then imitate it on Binance history
-cargo run --release -- calibrate --bullet-quotes bullet-data/bullet-SOL-USD-quotes-*.csv \
-  --bullet-trades bullet-data/bullet-SOL-USD-trades-*.csv \
+cargo run --release -- calibrate --bullet-quotes bullet-data/SOL-USD/bullet-SOL-USD-quotes-*.csv.gz \
+  --bullet-trades bullet-data/SOL-USD/bullet-SOL-USD-trades-*.csv.gz \
   --tape data/binance-perp-SOLUSDT-trades-2026-11-09.csv --tape-label "perp SOLUSDT" \
-  --out bullet-data/profile-vs-perp-SOLUSDT.toml
+  --out bullet-data/SOL-USD/profile-vs-perp-SOLUSDT.toml
 cargo run --release -- backtest --config backtest.toml \
   --binance-trades data/binance-perp-SOLUSDT-trades-2026-*.csv \
   --proxy-tape     data/binance-perp-SOLUSDT-trades-2026-*.csv \
-  --profile bullet-data/profile-vs-perp-SOLUSDT.toml --report-out reports/proxy.txt
+  --profile bullet-data/SOL-USD/profile-vs-perp-SOLUSDT.toml --report-out reports/proxy.txt
 ```
 
 | File | |
@@ -163,6 +165,20 @@ whenever its reference goes 5 s without an update. Over a day, the SOLUSDT perp
 tape is silent for more than 5 s only 0.5% of the time; SOLUSDC perp 36%, and
 SOLUSDC spot 43%. So backtests use the SOLUSDT perp. A USDC reference can only
 be judged live (or from your own `record`ings).
+
+**Where the data lives.**
+- `bullet-data/<MARKET>/`: our Bullet recordings, committed. One gzipped CSV per
+  market, stream and UTC hour (named by its first row's time, so names sort in
+  time order), plus the market's tick and lot size (`*-meta.toml`). About
+  30 MB a day for 26 markets. Bullet has no history to download, so these are
+  irreplaceable: commit them (`scripts/sync-recordings.sh`, then `git add`).
+  When the repo grows past a few GB, move older months to GitHub Releases or a
+  storage bucket.
+- `bullet-data/binance-map.toml`: which Binance perp tracks each Bullet market
+  (checked by price; US100/US500 only have ETFs at a different price level).
+- `data/`: Binance archive downloads and the recorder's working folder
+  (`data/bullet-live/`). Not committed: Binance's archive can be downloaded
+  again any time.
 
 **Where to record.** Binance answers 403 to some regions and cloud IP ranges
 (US ones among them), so run `record` where the live bot would run (the Tokyo

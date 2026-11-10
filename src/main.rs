@@ -76,16 +76,8 @@ enum Command {
         #[arg(long)]
         mirror: bool,
     },
-    /// Record live Binance and Bullet market data to CSV, for backtesting.
-    Record {
-        #[arg(long, default_value = "bot.toml")]
-        config: PathBuf,
-        #[arg(long, default_value = "data")]
-        out: PathBuf,
-        /// Stop after this many minutes (default: until Ctrl-C).
-        #[arg(long)]
-        minutes: Option<u64>,
-    },
+    /// Record live Bullet (and Binance) market data to CSV, for backtesting.
+    Record(record::Args),
     /// Replay recorded data through the market maker with a simulated exchange.
     Backtest(backtest::Args),
     /// Measure Bullet from recordings against a Binance tape (for --proxy backtests).
@@ -123,11 +115,7 @@ async fn main() -> Result<()> {
             out,
             mirror,
         } => fetch::run(market, &symbol, dataset, &from, &to, &out, mirror).await,
-        Command::Record {
-            config,
-            out,
-            minutes,
-        } => record::run(&config, &out, minutes).await,
+        Command::Record(args) => record::run(&args).await,
         Command::Backtest(args) => backtest::run(&args),
         Command::Calibrate(args) => calibrate::run(&args),
     }

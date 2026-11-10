@@ -15,7 +15,7 @@
 //! the bids).
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -133,17 +133,20 @@ impl CsvWriter {
     }
 }
 
+/// Lines of a plain or gzipped file.
+type Lines = std::io::Lines<BufReader<Box<dyn Read>>>;
+
 /// Reads one of our CSVs row by row, across several files in order. Rows
 /// are parsed lazily so a day of data never has to fit in memory.
 pub struct CsvReader<T> {
     files: std::vec::IntoIter<PathBuf>,
-    lines: Option<(PathBuf, std::io::Lines<BufReader<File>>)>,
+    lines: Option<(PathBuf, Lines)>,
     parse: fn(&str) -> Result<T>,
 }
 
 impl<T> CsvReader<T> {
     pub fn open(mut files: Vec<PathBuf>, parse: fn(&str) -> Result<T>) -> Self {
-        files.sort(); // our file names sort by date
+        files.sort(); // our file names sort by time
         Self {
             files: files.into_iter(),
             lines: None,
@@ -174,7 +177,15 @@ impl<T> Iterator for CsvReader<T> {
             }
             let path = self.files.next()?;
             match File::open(&path) {
-                Ok(f) => self.lines = Some((path, BufReader::new(f).lines())),
+                Ok(f) => {
+                    // `.csv.gz` files (finished recordings) are read through gunzip.
+                    let input: Box<dyn Read> = if path.extension().is_some_and(|e| e == "gz") {
+                        Box::new(flate2::read::GzDecoder::new(f))
+                    } else {
+                        Box::new(f)
+                    };
+                    self.lines = Some((path, BufReader::new(input).lines()));
+                }
                 Err(e) => return Some(Err(anyhow::anyhow!("opening {}: {e}", path.display()))),
             }
         }
