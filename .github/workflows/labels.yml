@@ -1,0 +1,32 @@
+# Creates and colours the pipeline labels from docs/pipeline.md.
+# Runs when this file changes, or by hand (Actions -> Labels -> Run workflow).
+name: Labels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/labels.yml]
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - run: |
+          label() { gh label create "$1" --color "$2" --description "$3" --force; }
+          label "stage: 0 idea"        "d4c5f9" "Pipeline: a hypothesis, not yet tested"
+          label "stage: 1 research"    "c5def5" "Pipeline: data, fees, venue rules, test plan"
+          label "stage: 2 backtest"    "bfd4f2" "Pipeline: coded and replayed on history with costs"
+          label "stage: 3 validation"  "fef2c0" "Pipeline: out-of-sample, robustness, risk review"
+          label "stage: 4 paper"       "fbca04" "Pipeline: live data, no orders"
+          label "stage: 5 pilot live"  "f9a03f" "Pipeline: minimum size, real money"
+          label "stage: 6 production"  "0e8a16" "Pipeline: scaled and monitored"
+          label "stage: x retired"     "6a737d" "Pipeline: killed or switched off (say why)"
+          label "strategy"             "5319e7" "A strategy card"
+          label "infra"                "1d76db" "Data, servers or tooling serving a strategy"
