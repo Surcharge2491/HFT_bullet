@@ -8,6 +8,9 @@ through the bot's unchanged `MarketMaker` with a simulated exchange).
 Based on [bulletxyz/hft-for-dummies](https://github.com/bulletxyz/hft-for-dummies)
 (Apache-2.0, upstream commit `11ba8eb`). The original README follows.
 
+Work is tracked as cards moving from idea to execution: see
+[`docs/pipeline.md`](docs/pipeline.md).
+
 `bullet-data/` holds Bullet SOL-USD recordings from `record` (top of book after
 every update, and every public trade), one CSV per UTC day, plus the market's
 tick and lot size in `bullet-SOL-USD-meta.toml`. Bullet has no public market

@@ -1,0 +1,41 @@
+name: Strategy card
+description: A new trading idea, entering the pipeline at stage 0 (see docs/pipeline.md).
+title: "[strategy] "
+labels: ["strategy", "stage: 0 idea"]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What edge, why it should exist, and who is on the other side.
+    validations:
+      required: true
+  - type: input
+    id: market
+    attributes:
+      label: Market and venue
+      placeholder: e.g. SOL-USD perp on Bullet, priced off Binance SOLUSDT perp
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data needed
+      description: What data the test needs, and whether we can get it.
+  - type: textarea
+    id: test
+    attributes:
+      label: Test plan
+      description: Metric, period, costs (fees, latency), in-sample vs out-of-sample split.
+  - type: textarea
+    id: kill
+    attributes:
+      label: Kill criteria
+      description: Decided before testing. What result would kill this card?
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk limits
+      description: Max position, max loss, kill switch. Required before Pilot live.
