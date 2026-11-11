@@ -91,6 +91,11 @@ pub struct Args {
     /// Seed for the proxy's random trade sampling.
     #[arg(long, default_value_t = 1)]
     pub seed: u64,
+    /// PROXY mode: also save the imitated Bullet book and trades to these two
+    /// CSV files (quotes, trades), so `calibrate` can check them against
+    /// the real recordings.
+    #[arg(long, num_args = 2, value_names = ["QUOTES", "TRADES"])]
+    pub proxy_out: Vec<PathBuf>,
     /// A name for this run, printed in the report.
     #[arg(long, default_value = "")]
     pub label: String,
@@ -173,9 +178,21 @@ pub fn run(args: &Args) -> Result<()> {
                 .with_context(|| format!("reading {}", path.display()))?,
         )?;
         let tape = CsvReader::open(args.proxy_tape.clone(), Trade::parse);
-        sources.push(Box::new(crate::proxy::ProxyVenue::new(
-            tape, &profile, tick, args.seed,
-        )));
+        let venue = crate::proxy::ProxyVenue::new(tape, &profile, tick, args.seed);
+        if let [quotes, trades] = args.proxy_out.as_slice() {
+            let mut q = CsvWriter::create(quotes, crate::marketdata::QUOTES_HEADER)?;
+            let mut t = CsvWriter::create(trades, crate::marketdata::TRADES_HEADER)?;
+            sources.push(Box::new(venue.inspect(move |m| {
+                // Best effort (flushed when dropped): a failed write only loses the copy.
+                let _ = match m {
+                    Ok(Market::BulletBook(x)) => q.row(&x.csv()),
+                    Ok(Market::BulletTrade(x)) => t.row(&x.csv()),
+                    _ => Ok(()),
+                };
+            })));
+        } else {
+            sources.push(Box::new(venue));
+        }
     } else {
         sources.push(Box::new(
             CsvReader::open(args.bullet_quotes.clone(), Quote::parse)

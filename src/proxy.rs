@@ -7,14 +7,22 @@
 //! - **Book.** Bullet's mid follows the tape `lag_ms` later, `basis_bps_mean`
 //!   away, with the typical spread around it, rounded to Bullet's tick.
 //!   Re-sent at least once a second, as Bullet does. The gap isn't fixed:
-//!   it wanders as much as we measured (`basis_bps_std`) and drifts back as
+//!   it wanders as much as we measured (`basis_bps_robust_std`) and drifts back as
 //!   fast as we measured (`basis_halflife_secs`). Without that, Bullet would
 //!   follow Binance perfectly and the backtest would flatter us.
 //! - **Trades.** We keep a random sample of the tape's trades, just enough to
 //!   match Bullet's trade rate. Keeping real trades (not made-up ones) keeps
 //!   their timing and side: aggressive flow bunches up when the price is
-//!   about to move, and that's what picks market makers off. Sizes and how
-//!   far past the mid they print are drawn from what we measured on Bullet.
+//!   about to move, and that's what picks market makers off. Sizes are drawn
+//!   from what we measured on Bullet. Each trade takes Bullet's best price,
+//!   but only if that's within what the trader will pay over Binance: a
+//!   distance drawn from how far past the *tape* real Bullet trades printed
+//!   (`trade_gap_bps_quantiles`). Real traders don't buy on Bullet while it's
+//!   dearer than Binance, so when the book has wandered, trades only print
+//!   on the side that's back toward Binance. Trades that don't happen are
+//!   made up for by keeping a few more of the rest, so the rate still
+//!   matches. (Profiles from before that measurement print past Bullet's
+//!   mid instead, which overstates fills on wide quotes.)
 //!
 //! This is a model, so backtests on it are labelled PROXY. It is good for
 //! asking "does the pricing logic survive three months of markets?", not
@@ -51,6 +59,10 @@ pub struct ProxyVenue<I> {
     top_size: Decimal,
     sizes: Vec<Decimal>,
     offsets_bps: Vec<f64>,
+    gaps_bps: Vec<f64>,
+    /// Trades we tried to print, and those that could (not inside the spread).
+    tried: u64,
+    printed: u64,
     rng: SplitMix64,
     out: VecDeque<Market>,
     book: Option<Quote>,
@@ -67,13 +79,22 @@ impl<I: Iterator<Item = Result<Trade>>> ProxyVenue<I> {
             lag_us: profile.lag_ms * 1000,
             basis: profile.basis_bps_mean / BPS,
             wander: 0.0,
-            wander_std: profile.basis_bps_std / BPS,
+            // The typical wander, not the std a few odd moments inflate
+            // (old profiles only have the std).
+            wander_std: if profile.basis_bps_robust_std > 0.0 {
+                profile.basis_bps_robust_std
+            } else {
+                profile.basis_bps_std
+            } / BPS,
             wander_halflife_us: profile.basis_halflife_secs * 1e6,
             last_tape_us: None,
             half_spread: dec(profile.spread_bps_p50 / 2.0 / BPS),
             top_size: profile.top_size_p50,
             sizes: profile.trade_size_quantiles.clone(),
             offsets_bps: profile.trade_offset_bps_quantiles.clone(),
+            gaps_bps: profile.trade_gap_bps_quantiles.clone(),
+            tried: 0,
+            printed: 0,
             rng: SplitMix64(seed),
             out: VecDeque::new(),
             book: None,
@@ -114,18 +135,47 @@ impl<I: Iterator<Item = Result<Trade>>> ProxyVenue<I> {
             self.next_heartbeat = t + SECOND;
         }
 
-        if self.rng.unit() < self.keep {
+        // Skipped trades are made up for by keeping a few more of the rest.
+        let topped_up = self.keep * self.tried.max(1) as f64 / self.printed.max(1) as f64;
+        if self.rng.unit() < topped_up.min(1.0) {
             let size = sample_decimal(&self.sizes, self.rng.unit())
                 .round_dp(2)
                 .max(Decimal::new(1, 2));
-            let offset = Decimal::from_f64(sample_f64(&self.offsets_bps, self.rng.unit()) / BPS)
-                .unwrap_or_default();
-            // A trade prints at the touch or beyond it, never inside the spread.
-            let price = if trade.buyer_is_maker {
-                floor_to(mid * (Decimal::ONE - offset), self.tick).min(bid)
+            let price = if self.gaps_bps.is_empty() {
+                // Old profile: past Bullet's mid, at the touch or beyond it.
+                let offset =
+                    Decimal::from_f64(sample_f64(&self.offsets_bps, self.rng.unit()) / BPS)
+                        .unwrap_or_default();
+                if trade.buyer_is_maker {
+                    floor_to(mid * (Decimal::ONE - offset), self.tick).min(bid)
+                } else {
+                    ceil_to(mid * (Decimal::ONE + offset), self.tick).max(ask)
+                }
+            } else if trade.buyer_is_maker {
+                bid
             } else {
-                ceil_to(mid * (Decimal::ONE + offset), self.tick).max(ask)
+                ask
             };
+            self.tried += 1;
+            let possible = if self.gaps_bps.is_empty() {
+                true
+            } else {
+                // The trader takes Bullet's best price only if it's within
+                // what they'll pay over the tape (plus the mean basis, not the
+                // wander): a distance drawn from what we measured.
+                let anchor = trade.price * Decimal::from_f64(1.0 + self.basis).unwrap_or_default();
+                let most = Decimal::from_f64(sample_f64(&self.gaps_bps, self.rng.unit()) / BPS)
+                    .unwrap_or_default();
+                if trade.buyer_is_maker {
+                    price >= anchor * (Decimal::ONE - most)
+                } else {
+                    price <= anchor * (Decimal::ONE + most)
+                }
+            };
+            if !possible {
+                return;
+            }
+            self.printed += 1;
             self.out.push_back(Market::BulletTrade(Trade {
                 recv_us: t,
                 exch_us: t,
@@ -242,9 +292,13 @@ mod tests {
             trade_offset_bps_quantiles: vec![2.0, 2.0],
             basis_bps_mean: 10.0,
             basis_bps_std: 0.0,
+            basis_bps_robust_std: 0.0,
             basis_halflife_secs: 30.0,
             lag_ms: 300,
             lag_correlation: 0.9,
+            trades_beyond_tape_share: vec![],
+            trade_gap_bps_quantiles: vec![],
+            basis_beyond_share: vec![],
         }
     }
 
@@ -340,8 +394,10 @@ mod tests {
 
     #[test]
     fn the_gap_wanders_as_much_as_measured() {
+        // The typical wander (2 bps), not the std a few jumps blew up to 10.
         let mut p = profile();
-        p.basis_bps_std = 2.0;
+        p.basis_bps_std = 10.0;
+        p.basis_bps_robust_std = 2.0;
         let rows: Vec<Market> = ProxyVenue::new(tape().into_iter(), &p, d("0.001"), 3)
             .map(Result::unwrap)
             .collect();
@@ -360,6 +416,43 @@ mod tests {
         let sd = (gaps.iter().map(|g| (g - m).powi(2)).sum::<f64>() / gaps.len() as f64).sqrt();
         assert!((m - 10.0).abs() < 1.5, "centred on the mean gap: {m}");
         assert!((1.0..3.0).contains(&sd), "wanders about 2 bps: {sd}");
+    }
+
+    #[test]
+    fn trades_follow_the_tape_not_the_wandering_book() {
+        // Real Bullet trades print close to Binance even when Bullet's book has
+        // wandered off: nobody buys on Bullet when it's dearer than Binance.
+        let mut p = profile();
+        p.basis_bps_robust_std = 20.0;
+        // Traders take Bullet's best price only when it's within 3 bps of
+        // the tape (100.10 with the basis): 100.07 to 100.13.
+        p.trade_gap_bps_quantiles = vec![3.0, 3.0];
+        let rows: Vec<Market> = ProxyVenue::new(tape().into_iter(), &p, d("0.001"), 5)
+            .map(Result::unwrap)
+            .collect();
+        let mut book = None;
+        let mut trades = 0;
+        for m in &rows {
+            match m {
+                Market::BulletBook(q) => book = Some(*q),
+                Market::BulletTrade(t) => {
+                    trades += 1;
+                    let q = book.unwrap();
+                    if t.buyer_is_maker {
+                        assert_eq!(t.price, q.bid, "sells hit the bid: {t:?}");
+                        assert!(t.price >= d("100.069"), "not far below: {t:?}");
+                    } else {
+                        assert_eq!(t.price, q.ask, "buys lift the ask: {t:?}");
+                        assert!(t.price <= d("100.131"), "not far above: {t:?}");
+                    }
+                }
+                Market::Reference(_) => {}
+            }
+        }
+        assert!(
+            (300..420).contains(&trades),
+            "still about 360 an hour: {trades}"
+        );
     }
 
     #[test]

@@ -65,6 +65,11 @@ pub struct Profile {
     /// (Bullet mid − tape price) / tape price, in bps.
     pub basis_bps_mean: f64,
     pub basis_bps_std: f64,
+    /// The same spread, ignoring rare jumps: 1.4826 × the median distance
+    /// from the median (equal to the std for a bell curve). The proxy wanders
+    /// this much; the plain std is inflated by a few odd moments.
+    #[serde(default)]
+    pub basis_bps_robust_std: f64,
     /// How fast the gap returns to its mean: the time for its
     /// autocorrelation to fall to one half, in seconds.
     #[serde(default)]
@@ -73,7 +78,25 @@ pub struct Profile {
     pub lag_ms: u64,
     /// The correlation of 1 s moves at that lag (how much Bullet follows the tape).
     pub lag_correlation: f64,
+    /// How far Bullet trades print past the tape (lagged, plus the mean
+    /// basis), toward the aggressor's side: the share of trades beyond
+    /// each of `TAIL_BPS`. This is what fills quotes far from fair value.
+    #[serde(default)]
+    pub trades_beyond_tape_share: Vec<f64>,
+    /// The same distance for every trade, at the 0th, 1st, ..., 100th
+    /// percentile (bps). The proxy prints its trades this far past the tape.
+    /// Every percentile, because the far tail is what fills wide quotes.
+    #[serde(default)]
+    pub trade_gap_bps_quantiles: Vec<f64>,
+    /// The share of time Bullet's mid sits at least each of `TAIL_BPS` away
+    /// from its usual gap to the tape (either side). A book that far off
+    /// trades through quotes on its own.
+    #[serde(default)]
+    pub basis_beyond_share: Vec<f64>,
 }
+
+/// The distances (bps) at which `trades_beyond_tape_share` is measured.
+pub const TAIL_BPS: [f64; 5] = [1.0, 2.0, 3.0, 5.0, 10.0];
 
 pub fn run(args: &Args) -> Result<()> {
     let quotes: Vec<Quote> =
@@ -177,6 +200,11 @@ pub fn measure(
         .map(|i| (grid_bullet[i] - grid_tape[i - lag_steps]) / grid_tape[i - lag_steps] * 1e4)
         .collect();
 
+    let lag_us = lag_steps as u64 * STEP;
+    let basis_mean = mean(&basis);
+    let mut gaps = gaps_to_tape(&trades_in, tape, lag_us, basis_mean);
+    gaps.sort_by(f64::total_cmp);
+
     Ok(Profile {
         tape: tape_label.to_string(),
         hours,
@@ -200,10 +228,47 @@ pub fn measure(
         },
         basis_bps_mean: mean(&basis),
         basis_bps_std: std(&basis),
+        basis_bps_robust_std: robust_std(&basis),
         basis_halflife_secs: halflife_steps(&basis, 6000) as f64 * STEP as f64 / 1e6,
         lag_ms: lag_steps as u64 * STEP / 1000,
         lag_correlation,
+        trades_beyond_tape_share: TAIL_BPS
+            .iter()
+            .map(|&b| gaps.iter().filter(|&&g| g >= b).count() as f64 / gaps.len().max(1) as f64)
+            .collect(),
+        trade_gap_bps_quantiles: (0..=100).map(|i| pick(&gaps, i as f64 / 100.0)).collect(),
+        basis_beyond_share: TAIL_BPS
+            .iter()
+            .map(|&b| {
+                let far = basis
+                    .iter()
+                    .filter(|x| (*x - basis_mean).abs() >= b)
+                    .count();
+                far as f64 / basis.len().max(1) as f64
+            })
+            .collect(),
     })
+}
+
+/// How far (bps) each trade printed past the tape price `lag_us` earlier
+/// (moved by `basis_bps`), toward the aggressor's side.
+fn gaps_to_tape(trades: &[&Trade], tape: &[Trade], lag_us: u64, basis_bps: f64) -> Vec<f64> {
+    let f = |d: Decimal| d.to_f64().unwrap_or(f64::NAN);
+    let mut gaps = Vec::new();
+    let mut ti = 0;
+    for t in trades {
+        let when = t.recv_us.saturating_sub(lag_us);
+        while ti + 1 < tape.len() && tape[ti + 1].recv_us <= when {
+            ti += 1;
+        }
+        if tape.get(ti).is_none_or(|x| x.recv_us > when) {
+            continue;
+        }
+        let toward = if t.buyer_is_maker { -1.0 } else { 1.0 };
+        let gap = (f(t.price) / f(tape[ti].price) - 1.0) * 1e4 - basis_bps;
+        gaps.push(toward * gap);
+    }
+    gaps
 }
 
 /// Which delay (in grid steps) best lines up Bullet's `horizon`-step moves
@@ -252,6 +317,17 @@ fn mean(v: &[f64]) -> f64 {
     } else {
         v.iter().sum::<f64>() / v.len() as f64
     }
+}
+
+/// 1.4826 × the median absolute deviation: a spread that a few outliers
+/// can't inflate.
+fn robust_std(v: &[f64]) -> f64 {
+    let mut sorted = v.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let median = pick(&sorted, 0.5);
+    let mut dev: Vec<f64> = v.iter().map(|x| (x - median).abs()).collect();
+    dev.sort_by(f64::total_cmp);
+    1.4826 * pick(&dev, 0.5)
 }
 
 fn std(v: &[f64]) -> f64 {
@@ -340,6 +416,18 @@ mod tests {
             }
         }
         (quotes, trades, tape)
+    }
+
+    #[test]
+    fn robust_std_ignores_a_few_jumps() {
+        // Evenly spread over ±1 bp (half within ±0.5, so 1.4826 × 0.5),
+        // plus 1% of the time 30 bps off either way.
+        let mut v: Vec<f64> = (0..1000).map(|i| i as f64 / 500.0 - 1.0).collect();
+        for (k, x) in v.iter_mut().step_by(100).enumerate() {
+            *x = if k % 2 == 0 { 30.0 } else { -30.0 };
+        }
+        assert!(std(&v) > 2.5, "the plain std is blown up: {}", std(&v));
+        assert!((robust_std(&v) - 0.741).abs() < 0.03, "{}", robust_std(&v));
     }
 
     #[test]
