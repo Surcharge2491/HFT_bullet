@@ -1,0 +1,9 @@
+== REAL 2026-11-10 ENA-USD ref=perp ENAUSDT spread=5bps ==
+backtest 2026-11-10 04:37:40Z -> 2026-11-10 23:59:59Z (19.37 h, 423020 events)
+  pnl            $-1.2184 (after $0 fees)
+  max drawdown   $1.3330
+  fills          517 (bought 13560, sold 13530, $4085.18 traded)
+  position       end 30, max |120|
+  quoting        both sides 75.5% of the time, 4 orders rejected as crossing
+  markout        +1s -1.89 bps, +10s -1.55 bps (mean per fill; negative = adverse selection)
+  final status   quoting

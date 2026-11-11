@@ -1,0 +1,9 @@
+== PROXY 2026-11-10 HYPE-USD ref=perp HYPEUSDT spread=1bps seed=1 ==
+backtest 2026-11-10 00:00:00Z -> 2026-11-10 23:59:58Z (24.00 h, 1213292 events)
+  pnl            $-23.2834 (after $0 fees)
+  max drawdown   $23.2838
+  fills          18917 (bought 1285.80, sold 1285.71, $187762.51 traded)
+  position       end 0.09, max |0.28|
+  quoting        both sides 70.6% of the time, 670 orders rejected as crossing
+  markout        +1s -1.24 bps, +10s -1.27 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

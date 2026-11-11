@@ -1,0 +1,10 @@
+== PROXY 30d 2026-10-10..2026-11-09 SOL-USD ref=perp SOLUSDT, Bullet imitated from that tape, spread=10bps ==
+backtest 2026-10-10 00:00:00Z -> 2026-11-09 23:59:59Z (744.00 h, 16502527 events)
+  pnl            $2.6996 (after $0 fees)
+  max drawdown   $0.9364
+  fills          819 (bought 47.40, sold 47.49, $9244.45 traded)
+  position       end -0.09, max |0.24|
+  quoting        both sides 78.7% of the time, 35 orders rejected as crossing
+  markout        +1s 1.44 bps, +10s 1.54 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 18 positive, mean $0.0871, sd $0.2500, Sharpe 6.65 (annualised, 365 d)
+  final status   quoting

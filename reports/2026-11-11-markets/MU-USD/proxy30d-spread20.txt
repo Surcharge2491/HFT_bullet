@@ -1,0 +1,10 @@
+== PROXY 30d 2026-10-10..2026-11-09 MU-USD ref=perp MUUSDT, Bullet imitated from that tape, spread=20bps ==
+backtest 2026-10-10 00:00:00Z -> 2026-11-09 23:59:59Z (744.00 h, 24844806 events)
+  pnl            $1.9837 (after $0 fees)
+  max drawdown   $2.3617
+  fills          159 (bought 1.046, sold 1.052, $1661.12 traded)
+  position       end -0.006, max |0.028|
+  quoting        both sides 41.9% of the time, 5 orders rejected as crossing
+  markout        +1s 2.42 bps, +10s 0.56 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 16 positive, mean $0.0640, sd $0.4891, Sharpe 2.50 (annualised, 365 d)
+  final status   quoting

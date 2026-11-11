@@ -1,0 +1,9 @@
+== PROXY PROXY 2026-11-10 SOL-USD ref=perp SOLUSDT spread=20bps seed=2 ==
+backtest 2026-11-10 00:00:00Z -> 2026-11-10 23:59:59Z (24.00 h, 599202 events)
+  pnl            $0.5240 (after $0 fees)
+  max drawdown   $0.4509
+  fills          31 (bought 1.92, sold 1.80, $310.94 traded)
+  position       end 0.12, max |0.24|
+  quoting        both sides 89.7% of the time, 3 orders rejected as crossing
+  markout        +1s 20.90 bps, +10s 28.74 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

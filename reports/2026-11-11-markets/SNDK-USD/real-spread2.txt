@@ -1,0 +1,9 @@
+== REAL 2026-11-10 SNDK-USD ref=perp SNDKUSDT spread=2bps ==
+backtest 2026-11-10 04:37:40Z -> 2026-11-10 23:59:59Z (19.37 h, 1942195 events)
+  pnl            $-10.3293 (after $0 fees)
+  max drawdown   $10.3803
+  fills          3444 (bought 14.296, sold 14.301, $24816.15 traded)
+  position       end -0.005, max |0.024|
+  quoting        both sides 81.0% of the time, 28 orders rejected as crossing
+  markout        +1s -2.68 bps, +10s -2.61 bps (mean per fill; negative = adverse selection)
+  final status   quoting

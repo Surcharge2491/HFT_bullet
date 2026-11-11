@@ -1,0 +1,10 @@
+== PROXY 30d 2026-10-10..2026-11-09 SPCX-USD ref=perp SPCXUSDT, Bullet imitated from that tape, spread=20bps ==
+backtest 2026-10-10 00:00:00Z -> 2026-11-09 23:59:58Z (744.00 h, 10413311 events)
+  pnl            $0.1736 (after $0 fees)
+  max drawdown   $2.3971
+  fills          200 (bought 7.24, sold 7.32, $2127.68 traded)
+  position       end -0.08, max |0.15|
+  quoting        both sides 23.2% of the time, 10 orders rejected as crossing
+  markout        +1s 1.80 bps, +10s -0.50 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 17 positive, mean $0.0056, sd $0.3534, Sharpe 0.30 (annualised, 365 d)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

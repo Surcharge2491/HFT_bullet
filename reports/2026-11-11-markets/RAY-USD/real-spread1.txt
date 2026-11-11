@@ -1,0 +1,9 @@
+== REAL 2026-11-10 RAY-USD ref=perp RAYSOLUSDT spread=1bps ==
+backtest 2026-11-10 04:37:41Z -> 2026-11-10 23:59:58Z (19.37 h, 193570 events)
+  pnl            $-2.3778 (after $0 fees)
+  max drawdown   $2.5640
+  fills          1337 (bought 2259, sold 2261, $7531.57 traded)
+  position       end -2, max |12|
+  quoting        both sides 21.3% of the time, 2 orders rejected as crossing
+  markout        +1s -1.91 bps, +10s -1.62 bps (mean per fill; negative = adverse selection)
+  final status   quoting

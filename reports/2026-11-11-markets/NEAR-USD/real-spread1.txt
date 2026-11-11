@@ -1,0 +1,9 @@
+== REAL 2026-11-10 NEAR-USD ref=perp NEARUSDT spread=1bps ==
+backtest 2026-11-10 04:37:40Z -> 2026-11-10 23:59:59Z (19.37 h, 414807 events)
+  pnl            $-37.2837 (after $0 fees)
+  max drawdown   $37.2910
+  fills          15541 (bought 22216, sold 22218, $159760.88 traded)
+  position       end -2, max |6|
+  quoting        both sides 56.2% of the time, 54 orders rejected as crossing
+  markout        +1s -2.23 bps, +10s -2.24 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

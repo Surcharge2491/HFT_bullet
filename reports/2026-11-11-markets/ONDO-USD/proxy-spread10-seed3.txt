@@ -1,0 +1,9 @@
+== PROXY 2026-11-10 ONDO-USD ref=perp ONDOUSDT spread=10bps seed=3 ==
+backtest 2026-11-10 00:00:00Z -> 2026-11-10 23:59:59Z (24.00 h, 238092 events)
+  pnl            $0.2670 (after $0 fees)
+  max drawdown   $0.3906
+  fills          180 (bought 2490, sold 2476.78, $1823.60 traded)
+  position       end 13.22, max |53.22|
+  quoting        both sides 33.2% of the time, 5 orders rejected as crossing
+  markout        +1s 2.77 bps, +10s 3.15 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

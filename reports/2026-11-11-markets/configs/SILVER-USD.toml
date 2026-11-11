@@ -1,0 +1,32 @@
+# Backtest settings: the same strategy as bot.toml, without the $2 loss stop,
+# so a 3-month run shows every day. Never use this file to trade.
+
+network = "mainnet"
+# api_url = "https://..."     # a direct endpoint, if Bullet has whitelisted you (Part 10)
+
+# true: watch the market and log the quotes we WOULD place. No key, no money.
+# Set to false only after reading "Going live" in the README.
+dry_run = true
+key_file = "bot.key"
+
+# Quote SOL on Bullet, using Binance's SOL perp as the price reference.
+symbol = "SILVER-USD"
+binance_symbol = "XAGUSDT"
+
+# --- Strategy ---
+spread_bps = "10"             # quote 0.10% either side of fair value
+order_size = "0.193"
+max_position = "0.386"
+skew_bps = "5"                # at max position, lean both quotes 0.05% to unwind
+requote_threshold_bps = "3"   # replace a quote once it is 0.03% off where we want it
+min_requote_ms = 500          # but at most twice a second
+quote_ttl_secs = 30           # our orders expire after 30s (refreshed every 15s) if the bot dies
+
+# --- Safety ---
+max_loss_usd = "1000000"     # backtests: never stop, so we see the whole period (drawdown is reported)
+reference_stale_secs = 5      # no Binance price for 5s: pull quotes
+book_stale_secs = 10          # no Bullet book update for 10s: pull quotes
+basis_halflife_secs = 300     # average the Binance-Bullet gap over ~5 minutes
+
+# --- Watching it ---
+metrics_port = 9000           # latency metrics for Grafana (infra/grafana); remove to turn off

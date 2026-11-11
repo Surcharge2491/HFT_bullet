@@ -1,0 +1,9 @@
+== PROXY 2026-11-10 PUMP-USD ref=perp PUMPUSDT spread=10bps seed=2 ==
+backtest 2026-11-10 00:00:00Z -> 2026-11-10 23:59:59Z (24.00 h, 265934 events)
+  pnl            $0.0121 (after $0 fees)
+  max drawdown   $0.2695
+  fills          146 (bought 165963.19, sold 166203.55, $1152.57 traded)
+  position       end -240.36, max |6000|
+  quoting        both sides 41.7% of the time, 3 orders rejected as crossing
+  markout        +1s 2.41 bps, +10s 1.71 bps (mean per fill; negative = adverse selection)
+  final status   quoting

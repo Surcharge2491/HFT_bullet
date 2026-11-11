@@ -1,0 +1,9 @@
+== REAL 2026-11-10 UNI-USD ref=perp UNIUSDT spread=10bps ==
+backtest 2026-11-10 04:37:42Z -> 2026-11-10 23:59:56Z (19.37 h, 320659 events)
+  pnl            $-0.0008 (after $0 fees)
+  max drawdown   $0.4358
+  fills          37 (bought 31, sold 31, $423.97 traded)
+  position       end 0, max |4|
+  quoting        both sides 80.5% of the time, 0 orders rejected as crossing
+  markout        +1s -3.12 bps, +10s 6.40 bps (mean per fill; negative = adverse selection)
+  final status   quoting

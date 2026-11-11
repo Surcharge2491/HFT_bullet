@@ -1,0 +1,10 @@
+== PROXY 30d 2026-10-10..2026-11-09 HYPE-USD ref=perp HYPEUSDT, Bullet imitated from that tape, spread=10bps ==
+backtest 2026-10-10 00:00:00Z -> 2026-11-09 23:59:59Z (744.00 h, 34146382 events)
+  pnl            $4.0011 (after $0 fees)
+  max drawdown   $1.4901
+  fills          2044 (bought 136.33, sold 136.45, $23520.76 traded)
+  position       end -0.12, max |0.28|
+  quoting        both sides 67.1% of the time, 82 orders rejected as crossing
+  markout        +1s 1.02 bps, +10s 0.72 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 22 positive, mean $0.1291, sd $0.2374, Sharpe 10.39 (annualised, 365 d)
+  final status   quoting

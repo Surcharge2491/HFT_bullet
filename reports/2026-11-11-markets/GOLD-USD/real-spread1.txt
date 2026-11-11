@@ -1,0 +1,9 @@
+== REAL 2026-11-10 GOLD-USD ref=perp XAUUSDT spread=1bps ==
+backtest 2026-11-10 04:37:39Z -> 2026-11-10 23:59:56Z (19.37 h, 584598 events)
+  pnl            $-2.7311 (after $0 fees)
+  max drawdown   $2.7313
+  fills          2500 (bought 2.828, sold 2.828, $23047.14 traded)
+  position       end 0.000, max |0.006|
+  quoting        both sides 75.3% of the time, 1 orders rejected as crossing
+  markout        +1s -0.90 bps, +10s -0.99 bps (mean per fill; negative = adverse selection)
+  final status   quoting

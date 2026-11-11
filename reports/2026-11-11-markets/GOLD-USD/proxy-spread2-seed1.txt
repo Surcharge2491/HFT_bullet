@@ -1,0 +1,9 @@
+== PROXY 2026-11-10 GOLD-USD ref=perp XAUUSDT spread=2bps seed=1 ==
+backtest 2026-11-10 00:00:00Z -> 2026-11-10 23:59:59Z (24.00 h, 844243 events)
+  pnl            $-1.3200 (after $0 fees)
+  max drawdown   $1.3317
+  fills          1906 (bought 2.859, sold 2.859, $23341.21 traded)
+  position       end 0.000, max |0.006|
+  quoting        both sides 73.3% of the time, 30 orders rejected as crossing
+  markout        +1s -0.59 bps, +10s -0.62 bps (mean per fill; negative = adverse selection)
+  final status   quoting

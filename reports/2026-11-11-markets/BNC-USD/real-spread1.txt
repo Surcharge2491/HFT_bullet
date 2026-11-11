@@ -1,0 +1,9 @@
+== REAL 2026-11-10 BNC-USD ref=perp BNCUSDT spread=1bps ==
+backtest 2026-11-10 04:37:40Z -> 2026-11-10 23:59:53Z (19.37 h, 102317 events)
+  pnl            $-0.8502 (after $0 fees)
+  max drawdown   $1.3071
+  fills          308 (bought 369, sold 369, $3436.03 traded)
+  position       end 0, max |6|
+  quoting        both sides 3.0% of the time, 3 orders rejected as crossing
+  markout        +1s -2.75 bps, +10s -3.33 bps (mean per fill; negative = adverse selection)
+  final status   Binance price is stale, not quoting

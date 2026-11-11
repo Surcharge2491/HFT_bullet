@@ -1,0 +1,10 @@
+== PROXY 30d 2026-10-10..2026-11-09 RAY-USD ref=perp RAYSOLUSDT, Bullet imitated from that tape, spread=20bps ==
+backtest 2026-10-10 00:00:00Z -> 2026-11-09 23:59:59Z (744.00 h, 9379394 events)
+  pnl            $0.1278 (after $0 fees)
+  max drawdown   $2.1048
+  fills          480 (bought 765, sold 764, $2843.33 traded)
+  position       end 1, max |12|
+  quoting        both sides 17.8% of the time, 7 orders rejected as crossing
+  markout        +1s 0.86 bps, +10s 0.79 bps (mean per fill; negative = adverse selection)
+  daily          31 days, 18 positive, mean $0.0041, sd $0.3684, Sharpe 0.21 (annualised, 365 d)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

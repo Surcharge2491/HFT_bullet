@@ -1,0 +1,9 @@
+== REAL 2026-11-10 SOL-USD ref=perp SOLUSDT spread=2bps ==
+backtest 2026-11-10 02:54:57Z -> 2026-11-10 23:59:59Z (21.08 h, 920777 events)
+  pnl            $-9.0734 (after $0 fees)
+  max drawdown   $9.0736
+  fills          10532 (bought 590.68, sold 590.60, $98916.76 traded)
+  position       end 0.08, max |0.24|
+  quoting        both sides 84.9% of the time, 52 orders rejected as crossing
+  markout        +1s -0.89 bps, +10s -0.88 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)
