@@ -1,0 +1,9 @@
+== REAL 2026-11-11 MU-USD ref=perp MUUSDT spread=1bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 2098151 events)
+  pnl            $-24.2233 (after $0 fees)
+  max drawdown   $24.2245
+  fills          16181 (bought 111.707, sold 111.706, $175437.33 traded)
+  position       end 0.001, max |0.028|
+  quoting        both sides 81.4% of the time, 250 orders rejected as crossing
+  markout        +1s -1.41 bps, +10s -1.37 bps (mean per fill; negative = adverse selection)
+  final status   quoting

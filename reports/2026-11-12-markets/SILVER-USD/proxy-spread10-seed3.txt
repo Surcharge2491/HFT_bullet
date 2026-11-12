@@ -1,0 +1,9 @@
+== PROXY 2026-11-11 SILVER-USD ref=perp XAGUSDT spread=10bps seed=3 ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:58Z (24.00 h, 168221 events)
+  pnl            $0.1403 (after $0 fees)
+  max drawdown   $0.1958
+  fills          4 (bought 0.03, sold 0.193, $11.66 traded)
+  position       end -0.163, max |0.193|
+  quoting        both sides 11.8% of the time, 0 orders rejected as crossing
+  markout        +1s 2.83 bps, +10s 0.25 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

@@ -1,0 +1,9 @@
+== REAL 2026-11-11 UNITREE-USD ref=perp UNITREEUSDT spread=1bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 250930 events)
+  pnl            $-0.3490 (after $0 fees)
+  max drawdown   $0.8045
+  fills          751 (bought 1.238, sold 1.267, $276.84 traded)
+  position       end -0.029, max |0.181|
+  quoting        both sides 10.6% of the time, 2 orders rejected as crossing
+  markout        +1s 1.18 bps, +10s 1.38 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

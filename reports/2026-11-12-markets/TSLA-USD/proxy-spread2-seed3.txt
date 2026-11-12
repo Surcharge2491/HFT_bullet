@@ -1,0 +1,9 @@
+== PROXY 2026-11-11 TSLA-USD ref=perp TSLAUSDT spread=2bps seed=3 ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 331472 events)
+  pnl            $-1.0863 (after $0 fees)
+  max drawdown   $1.1083
+  fills          1398 (bought 11.95, sold 11.93, $9322.09 traded)
+  position       end 0.02, max |0.06|
+  quoting        both sides 17.8% of the time, 15 orders rejected as crossing
+  markout        +1s -0.62 bps, +10s -0.48 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

@@ -1,0 +1,9 @@
+== REAL 2026-11-11 TAO-USD ref=perp TAOUSDT spread=1bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 412121 events)
+  pnl            $-3.8023 (after $0 fees)
+  max drawdown   $3.8026
+  fills          3219 (bought 25.410, sold 25.407, $11212.18 traded)
+  position       end 0.003, max |0.090|
+  quoting        both sides 62.6% of the time, 6 orders rejected as crossing
+  markout        +1s -0.77 bps, +10s -0.71 bps (mean per fill; negative = adverse selection)
+  final status   quoting

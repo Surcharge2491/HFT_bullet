@@ -1,0 +1,9 @@
+== REAL 2026-11-11 TIA-USD ref=perp TIAUSDT spread=2bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:58Z (24.00 h, 311747 events)
+  pnl            $-2.4069 (after $0 fees)
+  max drawdown   $2.4403
+  fills          1037 (bought 12190, sold 12190, $10375.27 traded)
+  position       end 0, max |60|
+  quoting        both sides 15.5% of the time, 6 orders rejected as crossing
+  markout        +1s -2.04 bps, +10s -1.95 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

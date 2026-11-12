@@ -1,0 +1,9 @@
+== REAL 2026-11-11 PUMP-USD ref=perp PUMPUSDT spread=2bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 431126 events)
+  pnl            $-8.5430 (after $0 fees)
+  max drawdown   $8.5454
+  fills          3526 (bought 3912000, sold 3913000, $27824.96 traded)
+  position       end -1000, max |6000|
+  quoting        both sides 54.7% of the time, 16 orders rejected as crossing
+  markout        +1s -2.04 bps, +10s -2.01 bps (mean per fill; negative = adverse selection)
+  final status   quoting

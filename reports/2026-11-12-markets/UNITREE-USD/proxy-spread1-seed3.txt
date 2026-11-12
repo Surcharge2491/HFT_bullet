@@ -1,0 +1,10 @@
+== PROXY 2026-11-11 UNITREE-USD ref=perp UNITREEUSDT spread=1bps seed=3 ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 330007 events)
+  pnl            $0.5782 (after $0 fees)
+  max drawdown   $0.3004
+  fills          1726 (bought 12.864, sold 12.782, $2836.84 traded)
+  position       end 0.082, max |0.181|
+  quoting        both sides 9.7% of the time, 1 orders rejected as crossing
+  markout        +1s 2.79 bps, +10s 2.88 bps (mean per fill; negative = adverse selection)
+  daily          2 days, 1 positive, mean $0.2891, sd $0.4088, Sharpe 13.51 (annualised, 365 d)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

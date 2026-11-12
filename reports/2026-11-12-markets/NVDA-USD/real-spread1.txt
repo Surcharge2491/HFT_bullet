@@ -1,0 +1,9 @@
+== REAL 2026-11-11 NVDA-USD ref=perp NVDAUSDT spread=1bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:58Z (24.00 h, 1114380 events)
+  pnl            $-12.4795 (after $0 fees)
+  max drawdown   $12.4968
+  fills          5448 (bought 124.96, sold 124.96, $42367.33 traded)
+  position       end 0.00, max |0.12|
+  quoting        both sides 82.3% of the time, 79 orders rejected as crossing
+  markout        +1s -2.11 bps, +10s -2.14 bps (mean per fill; negative = adverse selection)
+  final status   quoting

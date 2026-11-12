@@ -1,0 +1,9 @@
+== PROXY 2026-11-11 ENA-USD ref=perp ENAUSDT spread=1bps seed=3 ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 513601 events)
+  pnl            $-12.7991 (after $0 fees)
+  max drawdown   $12.7991
+  fills          6638 (bought 162662.71, sold 162626.27, $49329.07 traded)
+  position       end 36.44, max |139.80|
+  quoting        both sides 59.7% of the time, 42 orders rejected as crossing
+  markout        +1s -2.11 bps, +10s -2.16 bps (mean per fill; negative = adverse selection)
+  final status   quoting

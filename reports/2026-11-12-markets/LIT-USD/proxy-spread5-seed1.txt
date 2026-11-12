@@ -1,0 +1,9 @@
+== PROXY 2026-11-11 LIT-USD ref=perp LITUSDT spread=5bps seed=1 ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 692516 events)
+  pnl            $-1.6952 (after $0 fees)
+  max drawdown   $1.8088
+  fills          1364 (bought 2461.98, sold 2460.00, $16693.89 traded)
+  position       end 1.98, max |7.98|
+  quoting        both sides 57.6% of the time, 21 orders rejected as crossing
+  markout        +1s -1.01 bps, +10s -1.51 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

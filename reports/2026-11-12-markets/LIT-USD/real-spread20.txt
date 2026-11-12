@@ -1,0 +1,9 @@
+== REAL 2026-11-11 LIT-USD ref=perp LITUSDT spread=20bps ==
+backtest 2026-11-11 00:00:00Z -> 2026-11-11 23:59:59Z (24.00 h, 1117761 events)
+  pnl            $-0.0612 (after $0 fees)
+  max drawdown   $0.8852
+  fills          10 (bought 20, sold 20, $135.54 traded)
+  position       end 0, max |8|
+  quoting        both sides 61.6% of the time, 0 orders rejected as crossing
+  markout        +1s -3.84 bps, +10s -4.35 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)
