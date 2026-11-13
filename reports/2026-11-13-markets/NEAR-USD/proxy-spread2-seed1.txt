@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 NEAR-USD ref=perp NEARUSDT spread=2bps seed=1 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:56Z (24.00 h, 299978 events)
+  pnl            $-11.3078 (after $0 fees)
+  max drawdown   $11.3493
+  fills          12459 (bought 17613.74, sold 17614.10, $121791.52 traded)
+  position       end -0.36, max |6|
+  quoting        both sides 47.3% of the time, 87 orders rejected as crossing
+  markout        +1s -0.97 bps, +10s -0.97 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 NVDA-USD ref=perp NVDAUSDT spread=2bps seed=2 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 1650315 events)
+  pnl            $-12.3846 (after $0 fees)
+  max drawdown   $12.4098
+  fills          7152 (bought 172.33, sold 172.37, $55319.31 traded)
+  position       end -0.04, max |0.12|
+  quoting        both sides 69.4% of the time, 210 orders rejected as crossing
+  markout        +1s -1.85 bps, +10s -1.83 bps (mean per fill; negative = adverse selection)
+  final status   quoting

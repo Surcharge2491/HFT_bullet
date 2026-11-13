@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 TIA-USD ref=perp TIAUSDT spread=2bps seed=2 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 233713 events)
+  pnl            $-6.8888 (after $0 fees)
+  max drawdown   $6.9559
+  fills          3040 (bought 38193.76, sold 38185.12, $31656.78 traded)
+  position       end 8.64, max |60|
+  quoting        both sides 20.6% of the time, 31 orders rejected as crossing
+  markout        +1s -1.96 bps, +10s -2.11 bps (mean per fill; negative = adverse selection)
+  final status   quoting

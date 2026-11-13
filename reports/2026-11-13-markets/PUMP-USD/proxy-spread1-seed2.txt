@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 PUMP-USD ref=perp PUMPUSDT spread=1bps seed=2 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:55Z (24.00 h, 205742 events)
+  pnl            $-5.4868 (after $0 fees)
+  max drawdown   $5.4897
+  fills          2778 (bought 3047855.93, sold 3050543.95, $20645.02 traded)
+  position       end -2688.02, max |6000|
+  quoting        both sides 21.7% of the time, 13 orders rejected as crossing
+  markout        +1s -1.85 bps, +10s -1.70 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

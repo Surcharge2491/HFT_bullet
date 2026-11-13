@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 SNDK-USD ref=perp SNDKUSDT spread=2bps seed=3 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-13 00:00:00Z (24.00 h, 2586975 events)
+  pnl            $-12.2244 (after $0 fees)
+  max drawdown   $12.4365
+  fills          5467 (bought 28.910, sold 28.922, $53667.09 traded)
+  position       end -0.012, max |0.024|
+  quoting        both sides 67.4% of the time, 46 orders rejected as crossing
+  markout        +1s -2.01 bps, +10s -1.96 bps (mean per fill; negative = adverse selection)
+  final status   quoting

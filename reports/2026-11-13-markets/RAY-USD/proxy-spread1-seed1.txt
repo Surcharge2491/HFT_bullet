@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 RAY-USD ref=perp RAYSOLUSDT spread=1bps seed=1 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 200478 events)
+  pnl            $-1.1153 (after $0 fees)
+  max drawdown   $1.1857
+  fills          853 (bought 1031.00, sold 1033.22, $3232.16 traded)
+  position       end -2.22, max |11.43|
+  quoting        both sides 6.6% of the time, 3 orders rejected as crossing
+  markout        +1s -1.07 bps, +10s -1.10 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

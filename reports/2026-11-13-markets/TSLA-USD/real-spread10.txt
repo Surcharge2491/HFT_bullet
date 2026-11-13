@@ -1,0 +1,9 @@
+== REAL 2026-11-12 TSLA-USD ref=perp TSLAUSDT spread=10bps ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:56Z (24.00 h, 647757 events)
+  pnl            $-0.4784 (after $0 fees)
+  max drawdown   $0.5426
+  fills          21 (bought 0.30, sold 0.31, $240.55 traded)
+  position       end -0.01, max |0.06|
+  quoting        both sides 26.5% of the time, 0 orders rejected as crossing
+  markout        +1s -9.64 bps, +10s -10.13 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

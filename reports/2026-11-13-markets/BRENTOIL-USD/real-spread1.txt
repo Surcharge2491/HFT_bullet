@@ -1,0 +1,9 @@
+== REAL 2026-11-12 BRENTOIL-USD ref=perp BZUSDT spread=1bps ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:57Z (24.00 h, 377342 events)
+  pnl            $-2.5366 (after $0 fees)
+  max drawdown   $2.5366
+  fills          1739 (bought 64.21, sold 64.20, $11761.93 traded)
+  position       end 0.01, max |0.24|
+  quoting        both sides 38.6% of the time, 7 orders rejected as crossing
+  markout        +1s -1.21 bps, +10s -1.34 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

@@ -1,0 +1,10 @@
+== PROXY 2026-11-12 SKHYNIX-USD ref=perp SKHYNIXUSDT spread=1bps seed=3 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-13 00:00:00Z (24.00 h, 1312194 events)
+  pnl            $-12.1088 (after $0 fees)
+  max drawdown   $12.1243
+  fills          7579 (bought 41.450, sold 41.438, $78287.77 traded)
+  position       end 0.012, max |0.024|
+  quoting        both sides 68.9% of the time, 75 orders rejected as crossing
+  markout        +1s -1.51 bps, +10s -1.50 bps (mean per fill; negative = adverse selection)
+  daily          2 days, 0 positive, mean $-6.0544, sd $8.5622, Sharpe -13.51 (annualised, 365 d)
+  final status   quoting

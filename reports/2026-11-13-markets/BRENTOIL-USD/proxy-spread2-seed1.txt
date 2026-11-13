@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 BRENTOIL-USD ref=perp BZUSDT spread=2bps seed=1 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 216601 events)
+  pnl            $-0.8173 (after $0 fees)
+  max drawdown   $0.8975
+  fills          1159 (bought 25.21, sold 25.11, $4620.05 traded)
+  position       end 0.10, max |0.24|
+  quoting        both sides 20.9% of the time, 4 orders rejected as crossing
+  markout        +1s 0.60 bps, +10s 0.58 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

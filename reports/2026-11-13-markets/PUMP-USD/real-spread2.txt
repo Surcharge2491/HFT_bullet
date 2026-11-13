@@ -1,0 +1,9 @@
+== REAL 2026-11-12 PUMP-USD ref=perp PUMPUSDT spread=2bps ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 515136 events)
+  pnl            $-6.2317 (after $0 fees)
+  max drawdown   $6.2476
+  fills          2380 (bought 2861000, sold 2860000, $19421.29 traded)
+  position       end 1000, max |6000|
+  quoting        both sides 38.0% of the time, 14 orders rejected as crossing
+  markout        +1s -2.54 bps, +10s -2.65 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

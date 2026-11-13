@@ -1,0 +1,9 @@
+== REAL 2026-11-12 RAY-USD ref=perp RAYSOLUSDT spread=10bps ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 402497 events)
+  pnl            $0.0186 (after $0 fees)
+  max drawdown   $0.0114
+  fills          2 (bought 6, sold 6, $18.84 traded)
+  position       end 0, max |6|
+  quoting        both sides 15.1% of the time, 0 orders rejected as crossing
+  markout        +1s 7.16 bps, +10s 16.40 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

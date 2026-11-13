@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 MU-USD ref=perp MUUSDT spread=1bps seed=3 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-13 00:00:00Z (24.00 h, 1348046 events)
+  pnl            $-25.0110 (after $0 fees)
+  max drawdown   $25.0110
+  fills          12497 (bought 80.928, sold 80.928, $127198.35 traded)
+  position       end 0.000, max |0.028|
+  quoting        both sides 79.9% of the time, 118 orders rejected as crossing
+  markout        +1s -1.93 bps, +10s -1.96 bps (mean per fill; negative = adverse selection)
+  final status   quoting

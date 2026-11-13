@@ -1,0 +1,9 @@
+== REAL 2026-11-12 LIT-USD ref=perp LITUSDT spread=20bps ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 1472684 events)
+  pnl            $-0.3264 (after $0 fees)
+  max drawdown   $0.7172
+  fills          7 (bought 16, sold 12, $87.68 traded)
+  position       end 4, max |8|
+  quoting        both sides 55.3% of the time, 0 orders rejected as crossing
+  markout        +1s -3.10 bps, +10s -5.24 bps (mean per fill; negative = adverse selection)
+  final status   quoting

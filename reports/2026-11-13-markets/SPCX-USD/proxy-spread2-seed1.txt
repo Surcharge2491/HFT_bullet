@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 SPCX-USD ref=perp SPCXUSDT spread=2bps seed=1 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:56Z (24.00 h, 607717 events)
+  pnl            $-8.9350 (after $0 fees)
+  max drawdown   $8.9582
+  fills          5833 (bought 209.13, sold 209.21, $59530.00 traded)
+  position       end -0.08, max |0.16|
+  quoting        both sides 45.7% of the time, 130 orders rejected as crossing
+  markout        +1s -1.40 bps, +10s -1.38 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

@@ -1,0 +1,9 @@
+== PROXY 2026-11-12 WTIOIL-USD ref=perp CLUSDT spread=5bps seed=3 ==
+backtest 2026-11-12 00:00:00Z -> 2026-11-12 23:59:59Z (24.00 h, 257343 events)
+  pnl            $0.0643 (after $0 fees)
+  max drawdown   $0.2229
+  fills          419 (bought 8.218, sold 8.380, $1429.61 traded)
+  position       end -0.162, max |0.218|
+  quoting        both sides 34.1% of the time, 0 orders rejected as crossing
+  markout        +1s 1.86 bps, +10s 2.02 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)
