@@ -19,7 +19,7 @@ order_size = "0.05"           # SOL per order (~$5). SOL-USD's minimum is 0.01
 max_position = "0.1"          # never hold more than 0.1 SOL (~$10) long or short
 skew_bps = "5"                # at max position, lean both quotes 0.05% to unwind
 requote_threshold_bps = "3"   # replace a quote once it is 0.03% off where we want it
-min_requote_ms = 500          # but at most twice a second
+min_requote_ms = 500          # but at most twice a second (pulling a quote the price moved towards never waits)
 quote_ttl_secs = 30           # our orders expire after 30s (refreshed every 15s) if the bot dies
 
 # --- Safety ---

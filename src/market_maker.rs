@@ -182,16 +182,15 @@ impl MarketMaker {
             self.status = status;
         }
 
-        // Rate-limit replacing quotes, but never delay pulling them.
-        let pulling = wanted.bid.is_none() && wanted.ask.is_none();
+        // Rate-limit replacing quotes, but only the harmless replacements.
+        // A quote the price has moved *towards* (a bid now above where we'd
+        // bid, an ask below where we'd ask) is a gift to whoever trades with
+        // it next, so it is pulled or moved at once. Moving a quote that is
+        // merely too far away can wait. Cancel fast, add slow.
         let min_gap = Duration::from_millis(self.config.min_requote_ms);
-        if !pulling
-            && self
-                .last_requote
-                .is_some_and(|t| now.duration_since(t) < min_gap)
-        {
-            return Vec::new();
-        }
+        let throttled = self
+            .last_requote
+            .is_some_and(|t| now.duration_since(t) < min_gap);
 
         // Replace a quote at half its lifetime, long before it expires.
         let refresh_after = Duration::from_secs(self.config.quote_ttl_secs) / 2;
@@ -210,6 +209,9 @@ impl MarketMaker {
                 _ => false,
             };
             if keep {
+                continue;
+            }
+            if throttled && !resting.is_some_and(|o| self.too_generous(o, want)) {
                 continue;
             }
             if let Some(order) = resting {
@@ -241,6 +243,19 @@ impl MarketMaker {
         // Cancels first: never have the old and new quote resting at once.
         cancels.extend(places);
         cancels
+    }
+
+    /// Would a resting order trade at a worse price for us than we now want?
+    /// `want` is `None` when we no longer want that side quoted at all.
+    fn too_generous(&self, order: Order, want: Option<Decimal>) -> bool {
+        let Some(want) = want else {
+            return true;
+        };
+        let worse = match order.side {
+            Side::Buy => order.price > want,
+            Side::Sell => order.price < want,
+        };
+        worse && drift_bps(order.price, want) >= self.config.requote_threshold_bps
     }
 
     fn wanted_quotes(&self, now: Instant) -> (Quotes, &'static str) {
@@ -567,6 +582,58 @@ mod tests {
             places(&intents),
             vec![(Side::Buy, d("99.99")), (Side::Sell, d("100.21"))]
         );
+    }
+
+    /// Binance's mid moves to `mid` at time `t` (book 1 wide around it).
+    fn binance_at(mm: &mut MarketMaker, mid: &str, t: Instant) {
+        let mid = d(mid);
+        mm.on_event(
+            &Event::Reference {
+                bid: mid - d("0.5"),
+                ask: mid + d("0.5"),
+                stamp: Stamp::at(t),
+            },
+            t,
+        );
+    }
+
+    #[test]
+    fn a_quote_that_became_too_generous_is_replaced_without_waiting() {
+        let (mut mm, now) = warmed_up();
+        mm.config.min_requote_ms = 500;
+        mm.requote(now); // bid 99.90, ask 100.10
+        // 100 ms later Binance drops 10 bps. Our bid at 99.90 is now above
+        // where we want it (99.80): anyone can sell to us at a loss to us.
+        // That can't wait for the rate limit.
+        let soon = now + Duration::from_millis(100);
+        binance_at(&mut mm, "99.9", soon);
+        let intents = mm.requote(soon);
+        assert_eq!(places(&intents), vec![(Side::Buy, d("99.80"))]);
+        assert!(matches!(intents[0], Intent::Cancel { .. }), "{intents:?}");
+        // The ask (100.10, wanted 100.00) is merely too cautious: moving it
+        // closer is not urgent, so it waits for the rate limit.
+        assert_eq!(intents.len(), 2, "only the bid is replaced: {intents:?}");
+        let later = now + Duration::from_millis(600);
+        binance_at(&mut mm, "99.9", later);
+        assert_eq!(places(&mm.requote(later)), vec![(Side::Sell, d("100.00"))]);
+    }
+
+    #[test]
+    fn moving_a_quote_closer_still_waits_for_the_rate_limit() {
+        let (mut mm, now) = warmed_up();
+        mm.config.min_requote_ms = 500;
+        mm.requote(now);
+        mm.requote(now + Duration::from_millis(100)); // nothing to do
+        // Binance up 10 bps: the ask (100.10) is now too generous, the bid
+        // too cautious. Only the ask moves straight away.
+        let soon = now + Duration::from_millis(200);
+        binance_at(&mut mm, "100.1", soon);
+        // Fair 100.10: ask 100.2001 rounds up to 100.21.
+        assert_eq!(places(&mm.requote(soon)), vec![(Side::Sell, d("100.21"))]);
+        // Within the rate limit of that requote, the bid still waits.
+        let still_soon = now + Duration::from_millis(300);
+        binance_at(&mut mm, "100.1", still_soon);
+        assert!(mm.requote(still_soon).is_empty());
     }
 
     #[test]
