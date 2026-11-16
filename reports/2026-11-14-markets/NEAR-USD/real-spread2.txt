@@ -1,0 +1,9 @@
+== REAL 2026-11-13 NEAR-USD ref=perp NEARUSDT spread=2bps ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 10:17:34Z (10.29 h, 1062044 events)
+  pnl            $-14.9749 (after $0 fees)
+  max drawdown   $14.9749
+  fills          6543 (bought 9398.0, sold 9398.0, $64229.61 traded)
+  position       end 0, max |6|
+  quoting        both sides 70.5% of the time, 142 orders rejected as crossing
+  markout        +1s -2.24 bps, +10s -2.28 bps (mean per fill; negative = adverse selection)
+  final status   quoting

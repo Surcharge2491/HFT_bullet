@@ -1,0 +1,10 @@
+== PROXY 2026-11-13 SOL-USD ref=perp SOLUSDT spread=5bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-14 00:00:00Z (24.00 h, 641215 events)
+  pnl            $0.2131 (after $0 fees)
+  max drawdown   $0.1455
+  fills          1058 (bought 61.30, sold 61.31, $9750.42 traded)
+  position       end -0.01, max |0.24|
+  quoting        both sides 88.4% of the time, 30 orders rejected as crossing
+  markout        +1s -0.07 bps, +10s 0.08 bps (mean per fill; negative = adverse selection)
+  daily          2 days, 1 positive, mean $0.1066, sd $0.1509, Sharpe 13.50 (annualised, 365 d)
+  final status   quoting

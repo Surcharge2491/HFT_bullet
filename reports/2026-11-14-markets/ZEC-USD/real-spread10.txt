@@ -1,0 +1,9 @@
+== REAL 2026-11-13 ZEC-USD ref=perp ZECUSDT spread=10bps ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 10:17:34Z (10.29 h, 5163104 events)
+  pnl            $0.0177 (after $0 fees)
+  max drawdown   $0.9704
+  fills          202 (bought 1.01, sold 1.01, $1866.78 traded)
+  position       end 0.00, max |0.02|
+  quoting        both sides 88.5% of the time, 10 orders rejected as crossing
+  markout        +1s -3.27 bps, +10s -4.57 bps (mean per fill; negative = adverse selection)
+  final status   quoting

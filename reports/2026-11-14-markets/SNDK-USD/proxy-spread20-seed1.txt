@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 SNDK-USD ref=perp SNDKUSDT spread=20bps seed=1 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:58Z (24.00 h, 2373807 events)
+  pnl            $-0.1177 (after $0 fees)
+  max drawdown   $0.5009
+  fills          28 (bought 0.136, sold 0.138, $250.74 traded)
+  position       end -0.002, max |0.024|
+  quoting        both sides 86.8% of the time, 1 orders rejected as crossing
+  markout        +1s -0.56 bps, +10s 1.47 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

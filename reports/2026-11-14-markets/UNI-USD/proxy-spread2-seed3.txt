@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 UNI-USD ref=perp UNIUSDT spread=2bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:59Z (24.00 h, 376561 events)
+  pnl            $-8.9034 (after $0 fees)
+  max drawdown   $8.9897
+  fills          5272 (bought 4468.15, sold 4464.20, $52069.46 traded)
+  position       end 3.95, max |4|
+  quoting        both sides 47.6% of the time, 20 orders rejected as crossing
+  markout        +1s -1.89 bps, +10s -1.75 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

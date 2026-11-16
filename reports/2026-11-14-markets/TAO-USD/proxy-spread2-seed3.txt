@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 TAO-USD ref=perp TAOUSDT spread=2bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:58Z (24.00 h, 568852 events)
+  pnl            $-4.3718 (after $0 fees)
+  max drawdown   $4.3791
+  fills          3548 (bought 43.740, sold 43.736, $18388.88 traded)
+  position       end 0.004, max |0.092|
+  quoting        both sides 59.5% of the time, 22 orders rejected as crossing
+  markout        +1s -1.32 bps, +10s -1.22 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

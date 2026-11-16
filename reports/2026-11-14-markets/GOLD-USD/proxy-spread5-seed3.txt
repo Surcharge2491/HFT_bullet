@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 GOLD-USD ref=perp XAUUSDT spread=5bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:56Z (24.00 h, 790856 events)
+  pnl            $0.0663 (after $0 fees)
+  max drawdown   $0.0306
+  fills          24 (bought 0.036, sold 0.036, $280.29 traded)
+  position       end 0.000, max |0.003|
+  quoting        both sides 86.2% of the time, 2 orders rejected as crossing
+  markout        +1s -0.57 bps, +10s 0.46 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

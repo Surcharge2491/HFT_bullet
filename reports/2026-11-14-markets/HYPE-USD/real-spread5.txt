@@ -1,0 +1,9 @@
+== REAL 2026-11-13 HYPE-USD ref=perp HYPEUSDT spread=5bps ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 10:17:34Z (10.29 h, 3655340 events)
+  pnl            $-0.3053 (after $0 fees)
+  max drawdown   $0.4154
+  fills          298 (bought 20.86, sold 20.86, $2979.30 traded)
+  position       end 0.00, max |0.28|
+  quoting        both sides 95.9% of the time, 7 orders rejected as crossing
+  markout        +1s -0.92 bps, +10s -1.30 bps (mean per fill; negative = adverse selection)
+  final status   quoting

@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 TIA-USD ref=perp TIAUSDT spread=1bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:59Z (24.00 h, 283559 events)
+  pnl            $-20.0377 (after $0 fees)
+  max drawdown   $20.0522
+  fills          8053 (bought 106454.52, sold 106437.26, $87985.94 traded)
+  position       end 17.26, max |60|
+  quoting        both sides 39.4% of the time, 88 orders rejected as crossing
+  markout        +1s -2.29 bps, +10s -2.27 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

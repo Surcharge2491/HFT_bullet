@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 MU-USD ref=perp MUUSDT spread=1bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:59Z (24.00 h, 1344764 events)
+  pnl            $-30.4729 (after $0 fees)
+  max drawdown   $30.4878
+  fills          18451 (bought 120.696, sold 120.702, $188766.49 traded)
+  position       end -0.006, max |0.028|
+  quoting        both sides 77.0% of the time, 302 orders rejected as crossing
+  markout        +1s -1.55 bps, +10s -1.57 bps (mean per fill; negative = adverse selection)
+  final status   learning the Binance-to-Bullet price gap (takes about a minute)

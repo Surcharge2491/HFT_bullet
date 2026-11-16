@@ -1,0 +1,9 @@
+== REAL 2026-11-13 SOL-USD ref=perp SOLUSDT spread=2bps ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 10:17:34Z (10.29 h, 6322653 events)
+  pnl            $-6.1976 (after $0 fees)
+  max drawdown   $6.1994
+  fills          8160 (bought 476.14, sold 476.21, $75833.52 traded)
+  position       end -0.07, max |0.24|
+  quoting        both sides 83.3% of the time, 225 orders rejected as crossing
+  markout        +1s -0.85 bps, +10s -0.78 bps (mean per fill; negative = adverse selection)
+  final status   quoting

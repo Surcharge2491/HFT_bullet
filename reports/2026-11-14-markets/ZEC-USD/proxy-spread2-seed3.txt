@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 ZEC-USD ref=perp ZECUSDT spread=2bps seed=3 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:59Z (24.00 h, 4489129 events)
+  pnl            $-31.8852 (after $0 fees)
+  max drawdown   $31.8906
+  fills          25814 (bought 129.07, sold 129.07, $243142.66 traded)
+  position       end 0.00, max |0.02|
+  quoting        both sides 87.8% of the time, 818 orders rejected as crossing
+  markout        +1s -1.37 bps, +10s -1.33 bps (mean per fill; negative = adverse selection)
+  final status   quoting

@@ -1,0 +1,9 @@
+== PROXY 2026-11-13 NEAR-USD ref=perp NEARUSDT spread=5bps seed=1 ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 23:59:59Z (24.00 h, 385569 events)
+  pnl            $1.4324 (after $0 fees)
+  max drawdown   $0.3322
+  fills          3305 (bought 4708.12, sold 4706.45, $32551.08 traded)
+  position       end 1.67, max |5.95|
+  quoting        both sides 61.5% of the time, 37 orders rejected as crossing
+  markout        +1s -0.70 bps, +10s 0.02 bps (mean per fill; negative = adverse selection)
+  final status   quoting

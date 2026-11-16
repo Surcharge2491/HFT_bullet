@@ -1,0 +1,9 @@
+== REAL 2026-11-13 TIA-USD ref=perp TIAUSDT spread=5bps ==
+backtest 2026-11-13 00:00:00Z -> 2026-11-13 10:17:34Z (10.29 h, 401317 events)
+  pnl            $-1.4014 (after $0 fees)
+  max drawdown   $1.5308
+  fills          472 (bought 6040, sold 6060, $5130.57 traded)
+  position       end -20, max |60|
+  quoting        both sides 66.7% of the time, 6 orders rejected as crossing
+  markout        +1s -2.75 bps, +10s -2.69 bps (mean per fill; negative = adverse selection)
+  final status   quoting
